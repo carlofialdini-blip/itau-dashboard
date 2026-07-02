@@ -11,6 +11,7 @@ Run this script whenever you want to refresh the events calendar:
 """
 
 import json
+import sys
 import time
 from datetime import date, datetime
 from pathlib import Path
@@ -18,6 +19,9 @@ from pathlib import Path
 import pandas as pd
 import requests
 import yfinance as yf
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT            = Path(__file__).resolve().parent.parent
 EXCEL_FILE      = ROOT / "data" / "portfolio.xlsx"

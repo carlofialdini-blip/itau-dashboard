@@ -9,6 +9,7 @@ Run:  python3 china_scraper.py
 
 import json
 import re
+import sys
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -17,6 +18,9 @@ from urllib.parse import quote
 
 import requests
 import feedparser
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT         = Path(__file__).resolve().parent.parent
 OUTPUT_FILE  = ROOT / "data" / "china_news_cache.json"

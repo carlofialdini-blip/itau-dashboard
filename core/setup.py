@@ -10,6 +10,9 @@ import sys
 import time
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parent.parent
 
 STEPS = [
@@ -34,7 +37,7 @@ def run():
     total = len(STEPS)
     for i, (label, cmd) in enumerate(STEPS, 1):
         print(f"  [{i}/{total}] {label}…")
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
         if result.returncode != 0:
             print(f"\n  ERROR in step {i}:")
             print(result.stderr[-800:] if result.stderr else result.stdout[-800:])

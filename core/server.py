@@ -20,6 +20,9 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -61,7 +64,7 @@ def _run_refresh():
         try:
             result = subprocess.run(
                 [sys.executable, str(script)],
-                capture_output=True, text=True, timeout=180,
+                capture_output=True, text=True, timeout=180, encoding="utf-8",
             )
             if result.returncode != 0:
                 _status["error"]   = f"{script} exited with code {result.returncode}"

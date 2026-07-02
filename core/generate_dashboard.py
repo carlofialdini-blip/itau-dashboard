@@ -1,8 +1,12 @@
 import json
 import os
+import sys
 from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 import requests
 from jinja2 import Environment, FileSystemLoader

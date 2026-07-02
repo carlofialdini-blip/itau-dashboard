@@ -1,5 +1,6 @@
 import json
 import re
+import sys
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -9,6 +10,9 @@ from urllib.parse import quote
 import pandas as pd
 import requests
 import feedparser
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT         = Path(__file__).resolve().parent.parent
 EXCEL_FILE   = ROOT / "data" / "portfolio.xlsx"

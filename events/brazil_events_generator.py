@@ -12,10 +12,14 @@ Run:  python3 brazil_events_generator.py
 
 import calendar
 import json
+import sys
 from datetime import date, timedelta
 from pathlib import Path
 
 import requests
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT           = Path(__file__).resolve().parent.parent
 OUTPUT_FILE    = ROOT / "data" / "brazil_events.json"
