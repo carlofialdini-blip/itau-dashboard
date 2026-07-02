@@ -1,0 +1,31 @@
+# Generated output — rebuilt on every run
+dashboard.html
+data/*.json
+
+# Source data — uncomment the line below if you do NOT want to share portfolio.xlsx
+# data/portfolio.xlsx
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Claude Code local settings
+.claude/

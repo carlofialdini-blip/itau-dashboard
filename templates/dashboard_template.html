@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Portfolio Intelligence</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.26.0.min.js" charset="utf-8"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #ffffff;
+  --bg-2:       #f8fafc;
+  --bg-3:       #f1f5f9;
+  --border:     #e2e8f0;
+  --border-2:   #cbd5e1;
+  --text:       #0f172a;
+  --text-muted: #64748b;
+  --text-dim:   #475569;
+  --accent:     #d97706;
+  --accent-dim: rgba(217,119,6,0.08);
+  --cn-red:     #dc2626;
+  --cn-dim:     rgba(220,38,38,0.08);
+  --br-green:   #16a34a;
+  --br-dim:     rgba(22,163,74,0.08);
+  --cr-violet:  #7c3aed;
+  --cr-dim:     rgba(124,58,237,0.08);
+  --green:      #059669;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-2); }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+
+/* ── HEADER ── */
+.hdr {
+  position: sticky; top: 0; z-index: 300;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  height: 52px;
+  display: flex; align-items: center; padding: 0 24px; gap: 0;
+}
+.hdr-brand { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.hdr-mark  { width: 30px; height: 30px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.hdr-name  { font-size: 15px; font-weight: 700; letter-spacing: -0.4px; color: var(--text); }
+.hdr-sub   { font-size: 10px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.2px; margin-top: 1px; }
+
+.page-switcher {
+  display: flex; align-items: center; gap: 4px;
+  margin: 0 auto;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 8px; padding: 3px;
+}
+.page-btn {
+  padding: 5px 18px; font-size: 12px; font-weight: 600;
+  border: none; background: none; border-radius: 5px;
+  color: var(--text-muted); cursor: pointer; font-family: inherit;
+  transition: all .15s; display: flex; align-items: center; gap: 6px;
+}
+.page-btn:hover { color: var(--text); }
+.page-btn.active { background: var(--bg); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.page-btn.active.portfolio { color: var(--accent); }
+.page-btn.active.brazil    { color: var(--br-green); }
+.page-btn.active.china     { color: var(--cn-red); }
+.page-btn.active.credit    { color: var(--cr-violet); }
+
+.hdr-right { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.live-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--green); text-transform: uppercase; letter-spacing: .8px; }
+.live-dot   { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.hdr-ts { font-size: 11px; color: var(--text-muted); }
+
+/* ── STATS BAR ── */
+.stats-bar {
+  background: var(--bg-2); border-bottom: 1px solid var(--border);
+  padding: 11px 24px; display: flex; gap: 0;
+}
+.stat { display: flex; flex-direction: column; padding-right: 24px; margin-right: 24px; border-right: 1px solid var(--border); }
+.stat:last-child { border-right: none; }
+.stat-val { font-size: 20px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text); }
+.stat-lbl { font-size: 10px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; margin-top: 3px; }
+
+/* ── TABS ── */
+.tab-nav {
+  display: flex; align-items: center; gap: 2px;
+  padding: 0 24px; border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky; top: 52px; z-index: 250;
+}
+.tab-btn {
+  padding: 11px 16px 9px; font-size: 13px; font-weight: 500;
+  color: var(--text-muted); cursor: pointer; border: none; background: none;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  font-family: inherit; transition: color .15s, border-color .15s;
+  display: flex; align-items: center; gap: 7px;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--text); }
+.tab-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 10px; background: var(--bg-3); color: var(--text-muted); }
+.tab-btn.active .tab-badge { background: var(--accent-dim); color: var(--accent); }
+.tab-btn.active.cn-tab .tab-badge { background: var(--cn-dim); color: var(--cn-red); }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  background: var(--bg-2); border-right: 1px solid var(--border);
+  padding: 16px 12px;
+  position: sticky; top: 90px;
+  height: calc(100vh - 90px);
+  overflow-y: auto; align-self: start;
+}
+.filter-group { margin-bottom: 18px; }
+.filter-group-title { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; padding: 0 6px; margin-bottom: 6px; }
+
+.search-wrap { position: relative; margin-bottom: 18px; }
+.search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+.search-input {
+  width: 100%; background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px;
+  color: var(--text); padding: 8px 10px 8px 32px; font-size: 13px; font-family: inherit; outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.search-input::placeholder { color: var(--text-muted); }
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+
+.filter-select {
+  width: 100%; background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px;
+  color: var(--text); padding: 8px 28px 8px 10px; font-size: 12px; font-family: inherit; outline: none;
+  cursor: pointer; appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+  transition: border-color .15s;
+}
+.filter-select:focus { border-color: var(--accent); }
+.filter-select option { background: var(--bg); color: var(--text); }
+
+/* China sector pills */
+.f-tag {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 5px;
+  cursor: pointer; color: var(--text-dim); font-size: 12px; border: 1px solid transparent;
+  transition: all .1s; user-select: none; margin-bottom: 2px;
+}
+.f-tag:hover { background: var(--bg-3); color: var(--text); }
+.f-tag.active { background: var(--bg); border-color: var(--cn-red); color: var(--text); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.f-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.f-count { font-size: 10px; color: var(--text-muted); background: var(--bg-3); padding: 1px 6px; border-radius: 10px; margin-left: auto; font-variant-numeric: tabular-nums; }
+.f-tag.active .f-count { background: var(--cn-dim); color: var(--cn-red); }
+
+/* ── NEWS CARDS (shared) ── */
+.feed { background: var(--bg); }
+.feed-header { padding: 12px 24px 10px; border-bottom: 1px solid var(--border); background: var(--bg-2); }
+.feed-count { font-size: 12px; color: var(--text-muted); }
+.feed-count strong { color: var(--text); font-weight: 600; }
+
+.news-card {
+  display: grid; grid-template-columns: 3px 1fr auto;
+  gap: 0 14px; padding: 13px 24px 13px 20px;
+  border-bottom: 1px solid var(--border);
+  align-items: start; transition: background .1s; cursor: pointer;
+}
+.news-card:hover { background: var(--bg-2); }
+.card-bar { border-radius: 2px; align-self: stretch; min-height: 40px; width: 3px; }
+.card-body { min-width: 0; }
+.card-badges { display: flex; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; align-items: center; }
+.badge-co  { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .4px; border: 1px solid; }
+.badge-sec { font-size: 10px; padding: 2px 7px; border-radius: 4px; background: var(--bg-3); color: var(--text-muted); border: 1px solid var(--border); }
+.news-title { font-size: 13.5px; font-weight: 600; line-height: 1.4; margin-bottom: 4px; }
+.news-title a { color: var(--text); text-decoration: none; transition: color .1s; }
+.news-card:hover .news-title a { color: var(--accent); }
+.card-meta { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+.meta-src { font-weight: 500; color: var(--text-dim); }
+.meta-dot { color: var(--border-2); }
+.card-time { font-size: 11px; font-weight: 600; color: var(--text-muted); white-space: nowrap; padding-top: 2px; }
+
+.no-results { padding: 56px 24px; text-align: center; color: var(--text-muted); }
+.no-results-title { font-size: 15px; font-weight: 600; color: var(--text-dim); margin-bottom: 6px; }
+
+/* ── EVENTS (shared) ── */
+.ev-month-header {
+  padding: 9px 24px 7px; font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+  color: var(--text-muted); background: var(--bg-2);
+  border-bottom: 1px solid var(--border); border-top: 1px solid var(--border);
+  position: sticky; top: 90px; z-index: 200; text-transform: uppercase;
+}
+.ev-row {
+  display: grid; grid-template-columns: 68px 3px 1fr auto;
+  gap: 0 14px; padding: 12px 24px 12px 20px;
+  border-bottom: 1px solid var(--border); align-items: start; transition: background .1s;
+}
+.ev-row:hover { background: var(--bg-2); }
+.ev-row.is-past { opacity: .4; }
+.ev-row.is-today { background: rgba(217,119,6,.05); }
+.ev-date { text-align: right; }
+.ev-date-day   { font-size: 20px; font-weight: 700; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+.ev-date-month { font-size: 10px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.ev-bar { border-radius: 2px; align-self: stretch; min-height: 36px; width: 3px; }
+.ev-body { min-width: 0; }
+.ev-badges { display: flex; gap: 6px; margin-bottom: 4px; align-items: center; flex-wrap: wrap; }
+.ev-type-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; padding: 2px 6px; border-radius: 3px; border: 1px solid; }
+.ev-co-badge   { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; border: 1px solid; text-transform: uppercase; letter-spacing: .3px; }
+.ev-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; margin-bottom: 3px; }
+.ev-desc  { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
+.ev-countdown { font-size: 11px; font-weight: 600; white-space: nowrap; padding-top: 2px; font-variant-numeric: tabular-nums; }
+.ev-countdown.today  { color: var(--accent); }
+.ev-countdown.soon   { color: var(--green); }
+.ev-countdown.future { color: var(--text-muted); }
+.ev-countdown.past   { color: var(--text-muted); }
+
+/* event type colours */
+.ev-earnings   { --ec: #d97706; }
+.ev-economic   { --ec: #2563eb; }
+.ev-data       { --ec: #2563eb; }
+.ev-conference { --ec: #7c3aed; }
+.ev-dividend   { --ec: #059669; }
+.ev-corporate  { --ec: #64748b; }
+.ev-bar        { background: var(--ec, #64748b); }
+.ev-type-badge { color: var(--ec,#64748b); background: color-mix(in srgb,var(--ec,#64748b) 10%,transparent); border-color: color-mix(in srgb,var(--ec,#64748b) 30%,transparent); }
+
+/* ── CHINA CHARTS ── */
+.chart-section-header {
+  padding: 9px 24px 7px; font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+  color: var(--text-muted); text-transform: uppercase;
+  background: var(--bg-2); border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--cn-red);
+}
+.chart-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  gap: 1px; background: var(--border); border-bottom: 1px solid var(--border);
+}
+.chart-card { background: var(--bg); padding: 16px 20px; }
+.chart-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.chart-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.chart-unit  { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.btn-dl {
+  font-size: 10px; font-weight: 600; color: var(--text-muted); text-decoration: none;
+  padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border-2);
+  white-space: nowrap; transition: all .1s;
+}
+.btn-dl:hover { color: var(--text); border-color: var(--text-muted); }
+.chart-plot   { height: 220px; width: 100%; }
+.chart-status { height: 220px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 12px; gap: 8px; }
+.chart-status.hidden { display: none; }
+.chart-error  { color: var(--cn-red) !important; }
+.chart-footer { font-size: 10px; color: var(--text-muted); margin-top: 6px; }
+.spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--text-muted); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── DATASET CATALOG ── */
+.catalog-bar {
+  display: flex; gap: 10px; align-items: center;
+  padding: 14px 24px; background: var(--bg-2); border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.catalog-search {
+  flex: 1; min-width: 200px; max-width: 320px;
+  background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px;
+  color: var(--text); padding: 7px 10px; font-size: 12px; font-family: inherit; outline: none;
+}
+.catalog-search:focus { border-color: var(--cn-red); }
+.catalog-cat {
+  background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px;
+  color: var(--text); padding: 7px 24px 7px 10px; font-size: 12px; font-family: inherit; outline: none;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center; cursor: pointer;
+}
+.catalog-count { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+
+.catalog-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1px; background: var(--border);
+  max-height: calc(100vh - 210px); overflow-y: auto;
+}
+.cat-card {
+  background: var(--bg); padding: 14px 18px;
+  display: flex; flex-direction: column; gap: 4px;
+  transition: background .1s;
+}
+.cat-card:hover { background: var(--bg-2); }
+.cat-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.cat-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.35; flex: 1; }
+.cat-dl {
+  font-size: 10px; font-weight: 600; color: var(--text-muted); text-decoration: none;
+  padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border-2);
+  white-space: nowrap; flex-shrink: 0; transition: all .1s;
+}
+.cat-dl:hover { color: var(--cn-red); border-color: var(--cn-red); }
+.cat-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.cat-badge {
+  font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px;
+  padding: 2px 6px; border-radius: 3px;
+  background: var(--bg-3); color: var(--text-muted); border: 1px solid var(--border);
+}
+.cat-desc { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+/* ── SHOW / HIDE ── */
+.page { display: none; }
+.page.active { display: block; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.with-sidebar { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 210px); }
+
+/* ── REFRESH BUTTON ── */
+.refresh-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 6px;
+  border: 1px solid var(--border-2);
+  background: var(--bg); color: var(--text-muted);
+  font-size: 11px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  transition: all .15s; flex-shrink: 0;
+  user-select: none;
+}
+.refresh-btn:hover:not(:disabled) { color: var(--text); border-color: var(--text-muted); }
+.refresh-btn:disabled { opacity: .55; cursor: not-allowed; }
+.refresh-btn.running  { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+.refresh-icon { width: 13px; height: 13px; flex-shrink: 0; }
+.refresh-icon.spin { animation: spin .7s linear infinite; }
+
+/* ── PROGRESS BAR ── */
+.refresh-progress {
+  position: fixed; top: 52px; left: 0; right: 0; z-index: 400;
+  background: var(--bg-2); border-bottom: 1px solid var(--border);
+  padding: 8px 24px;
+  display: none; align-items: center; gap: 12px;
+  font-size: 12px; color: var(--text-muted);
+}
+.refresh-progress.visible { display: flex; }
+.rp-bar-wrap { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.rp-bar      { height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s ease; }
+.rp-label    { font-weight: 500; color: var(--text); min-width: 200px; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 500;
+  background: #1e293b; color: #e2e8f0;
+  padding: 12px 18px; border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  box-shadow: 0 4px 24px rgba(0,0,0,.18);
+  display: flex; align-items: center; gap: 10px;
+  transform: translateY(16px); opacity: 0;
+  transition: transform .25s ease, opacity .25s ease;
+  pointer-events: none; max-width: 360px;
+}
+.toast.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+.toast.success { border-left: 3px solid #10b981; }
+.toast.info    { border-left: 3px solid #3b82f6; }
+.toast.error   { border-left: 3px solid #ef4444; }
+.toast-close {
+  margin-left: auto; cursor: pointer; font-size: 15px;
+  color: #94a3b8; flex-shrink: 0; padding: 0 2px;
+}
+.toast-close:hover { color: #e2e8f0; }
+
+/* ── FOOTER ── */
+.footer {
+  border-top: 1px solid var(--border); padding: 14px 24px;
+  font-size: 11px; color: var(--text-muted);
+  display: flex; justify-content: space-between; background: var(--bg-2);
+}
+.footer a { color: var(--text-dim); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header class="hdr">
+  <div class="hdr-brand">
+    <div class="hdr-mark">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="#fff">
+        <path d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z"/>
+      </svg>
+    </div>
+    <div>
+      <div class="hdr-name">Portfolio Intelligence</div>
+      <div class="hdr-sub">Market Monitor</div>
+    </div>
+  </div>
+
+  <div class="page-switcher">
+    <button class="page-btn portfolio active" id="btnPortfolio" onclick="showPage('portfolio')">📊 Portfolio</button>
+    <button class="page-btn brazil"           id="btnBrazil"   onclick="showPage('brazil')">🇧🇷 Brazil</button>
+    <button class="page-btn china"            id="btnChina"    onclick="showPage('china')">🇨🇳 China</button>
+    <button class="page-btn credit"           id="btnCredit"   onclick="showPage('credit')">💳 Credit</button>
+  </div>
+
+  <div class="hdr-right">
+    <div class="live-badge"><div class="live-dot"></div>Live</div>
+    <div class="hdr-ts">Updated {{ generated }}</div>
+    <button id="refreshBtn" class="refresh-btn" onclick="startRefresh()" title="Fetch latest news">
+      <svg class="refresh-icon" id="refreshIcon" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+      </svg>
+      <span id="refreshLabel">Refresh</span>
+    </button>
+  </div>
+</header>
+
+<!-- Progress bar (shown during refresh) -->
+<div class="refresh-progress" id="refreshProgress">
+  <span class="rp-label" id="rpLabel">Refreshing…</span>
+  <div class="rp-bar-wrap"><div class="rp-bar" id="rpBar" style="width:0%"></div></div>
+  <span id="rpStep" style="font-size:11px;white-space:nowrap"></span>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     PORTFOLIO PAGE
+══════════════════════════════════════════════ -->
+<div id="portfolioPage" class="page active">
+
+  <div class="tab-nav">
+    <button class="tab-btn active" id="pfTabNews"   onclick="pfTab('news')"   style="border-bottom-color:var(--accent)">News Feed <span class="tab-badge" id="pfNewsBadge">{{ articles|length }}</span></button>
+    <button class="tab-btn"        id="pfTabEvents" onclick="pfTab('events')">Events Calendar <span class="tab-badge">{{ events|length }}</span></button>
+  </div>
+
+  <!-- News tab -->
+  <div class="tab-panel active" id="pfPanelNews">
+    <div class="with-sidebar">
+      <aside class="sidebar">
+        <div class="search-wrap">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+          <input type="text" id="pfSearch" class="search-input" placeholder="Search headlines…" autocomplete="off">
+        </div>
+        <div class="filter-group">
+          <div class="filter-group-title">Company</div>
+          <select id="pfCompany" class="filter-select"><option value="">All companies</option>{% for c in companies %}<option>{{ c }}</option>{% endfor %}</select>
+        </div>
+        <div class="filter-group">
+          <div class="filter-group-title">Sector</div>
+          <select id="pfSector" class="filter-select"><option value="">All sectors</option>{% for s in sectors %}<option>{{ s }}</option>{% endfor %}</select>
+        </div>
+        <div class="filter-group">
+          <div class="filter-group-title">Source</div>
+          <select id="pfProvider" class="filter-select"><option value="">All sources</option>{% for p in providers %}<option>{{ p }}</option>{% endfor %}</select>
+        </div>
+      </aside>
+      <main class="feed">
+        <div class="feed-header"><span class="feed-count"><strong id="pfFeedN">{{ articles|length }}</strong> headlines</span></div>
+        <div id="pfFeed">
+          {% for a in articles %}
+          <div class="news-card" data-co="{{ a.company }}" data-sec="{{ a.sector }}" data-prov="{{ a.provider }}" data-q="{{ a.title|lower }} {{ a.company|lower }} {{ a.provider|lower }}">
+            <div class="card-bar" data-pf-sec="{{ a.sector }}"></div>
+            <div class="card-body">
+              <div class="card-badges">
+                <span class="badge-co" data-pf-co="{{ a.company }}">{{ a.company }}</span>
+                <span class="badge-sec">{{ a.sector }}</span>
+              </div>
+              <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
+              <div class="card-meta"><span class="meta-src">{{ a.provider }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>
+            </div>
+            <div class="card-time" data-ts="{{ a.published }}">{{ a.elapsed }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="no-results" id="pfNoRes" style="display:none"><div class="no-results-title">No headlines found</div><div>Try adjusting your filters.</div></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Events tab -->
+  <div class="tab-panel" id="pfPanelEvents">
+    {% for month_label, month_events in event_months %}
+    <div class="ev-month-header">{{ month_label }}</div>
+    {% for ev in month_events %}
+    <div class="ev-row ev-{{ ev.type }}{% if ev.is_past %} is-past{% endif %}{% if ev.is_today %} is-today{% endif %}">
+      <div class="ev-date"><div class="ev-date-day">{{ ev.date_obj.day }}</div><div class="ev-date-month">{{ ev.date_obj.strftime('%b') }}</div></div>
+      <div class="ev-bar"></div>
+      <div class="ev-body">
+        <div class="ev-badges">
+          <span class="ev-type-badge">{{ ev.type }}</span>
+          {% if ev.company %}<span class="ev-co-badge" data-pf-ev-co="{{ ev.company }}">{{ ev.company }}</span>{% endif %}
+        </div>
+        <div class="ev-title">{{ ev.title }}</div>
+        {% if ev.description %}<div class="ev-desc">{{ ev.description }}</div>{% endif %}
+      </div>
+      <div class="ev-countdown {% if ev.is_today %}today{% elif ev.is_soon %}soon{% elif ev.is_past %}past{% else %}future{% endif %}">{{ ev.countdown }}</div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+  </div>
+
+
+</div><!-- /portfolioPage -->
+
+
+<!-- ══════════════════════════════════════════════
+     BRAZIL PAGE
+══════════════════════════════════════════════ -->
+<div id="brazilPage" class="page">
+
+  <div class="tab-nav">
+    <button class="tab-btn br-tab active" id="brTabNews"    onclick="brTab('news')"    style="border-bottom-color:var(--br-green)">News <span class="tab-badge" style="background:var(--br-dim);color:var(--br-green)" id="brNewsBadge">{{ brazil_total }}</span></button>
+    <button class="tab-btn br-tab"        id="brTabEvents"  onclick="brTab('events')">Events Calendar <span class="tab-badge">{{ brazil_events|length }}</span></button>
+    <button class="tab-btn br-tab"        id="brTabCharts"  onclick="brTab('charts')">Economic Data <span class="tab-badge">{{ num_brazil_datasets }}</span></button>
+  </div>
+
+  <!-- News tab (default) -->
+  <div class="tab-panel active" id="brPanelNews">
+    <div class="with-sidebar">
+      <aside class="sidebar">
+        <div class="search-wrap">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+          <input type="text" id="brSearch" class="search-input" placeholder="Search headlines…" autocomplete="off">
+        </div>
+        <div class="filter-group">
+          <div class="filter-group-title">Sector</div>
+          <div class="f-tag active" data-br-sec="" style="--f-active-border:var(--br-green)"><span class="f-dot" style="background:#64748b"></span><span>All sectors</span><span class="f-count">{{ brazil_total }}</span></div>
+          {% for sec, data in brazil_news.items() %}
+          <div class="f-tag" data-br-sec="{{ sec }}"><span class="f-dot" style="background:{{ data.color }}"></span><span>{{ sec }}</span><span class="f-count">{{ data.articles|length }}</span></div>
+          {% endfor %}
+        </div>
+      </aside>
+      <main class="feed">
+        <div class="feed-header"><span class="feed-count"><strong id="brFeedN">{{ brazil_total }}</strong> headlines</span></div>
+        <div id="brFeed">
+          {% for a in brazil_articles %}
+          <div class="news-card" data-br-sec="{{ a.sector }}" data-br-q="{{ a.title|lower }} {{ a.sector|lower }} {{ a.source|lower }}">
+            <div class="card-bar" style="background:{{ a.color }}"></div>
+            <div class="card-body">
+              <div class="card-badges">
+                <span class="badge-co" style="color:{{ a.color }};background:{{ a.color }}18;border-color:{{ a.color }}40">{{ a.sector }}</span>
+              </div>
+              <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
+              <div class="card-meta"><span class="meta-src">{{ a.source }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>
+            </div>
+            <div class="card-time" data-ts="{{ a.published }}">{{ a.elapsed }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="no-results" id="brNoRes" style="display:none"><div class="no-results-title">No headlines found</div><div>Try a different sector.</div></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Events tab -->
+  <div class="tab-panel" id="brPanelEvents">
+    {% for month_label, month_events in brazil_event_months %}
+    <div class="ev-month-header">{{ month_label }}</div>
+    {% for ev in month_events %}
+    <div class="ev-row ev-{{ ev.type }}{% if ev.is_past %} is-past{% endif %}{% if ev.is_today %} is-today{% endif %}">
+      <div class="ev-date"><div class="ev-date-day">{{ ev.date_obj.day }}</div><div class="ev-date-month">{{ ev.date_obj.strftime('%b') }}</div></div>
+      <div class="ev-bar"></div>
+      <div class="ev-body">
+        <div class="ev-badges">
+          <span class="ev-type-badge">{{ ev.type }}</span>
+          {% if ev.sector %}<span class="badge-sec">{{ ev.sector }}</span>{% endif %}
+        </div>
+        <div class="ev-title">{{ ev.title }}</div>
+        {% if ev.description %}<div class="ev-desc">{{ ev.description }}</div>{% endif %}
+      </div>
+      <div class="ev-countdown {% if ev.is_today %}today{% elif ev.is_soon %}soon{% elif ev.is_past %}past{% else %}future{% endif %}">{{ ev.countdown }}</div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+  </div>
+
+  <!-- Macro Data tab -->
+  <div class="tab-panel" id="brPanelCharts">
+    <div id="brCharts"><!-- built by JS --></div>
+  </div>
+
+</div><!-- /brazilPage -->
+
+
+<!-- ══════════════════════════════════════════════
+     CHINA PAGE
+══════════════════════════════════════════════ -->
+<div id="chinaPage" class="page">
+
+  <div class="tab-nav">
+    <button class="tab-btn cn-tab active" id="cnTabNews"    onclick="cnTab('news')"    style="border-bottom-color:var(--cn-red)">News <span class="tab-badge" style="background:var(--cn-dim);color:var(--cn-red)" id="cnNewsBadge">{{ china_total }}</span></button>
+    <button class="tab-btn cn-tab"        id="cnTabEvents"  onclick="cnTab('events')">Events Calendar <span class="tab-badge">{{ china_events|length }}</span></button>
+    <button class="tab-btn cn-tab"        id="cnTabCharts"  onclick="cnTab('charts')">Economic Data <span class="tab-badge">{{ num_china_datasets }}</span></button>
+    <button class="tab-btn cn-tab"        id="cnTabCatalog" onclick="cnTab('catalog')">All Datasets <span class="tab-badge" id="cnCatalogBadge">—</span></button>
+  </div>
+
+  <!-- News tab (default) -->
+  <div class="tab-panel active" id="cnPanelNews">
+    <div class="with-sidebar" id="cnNewsLayout">
+      <aside class="sidebar">
+        <div class="search-wrap">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+          <input type="text" id="cnSearch" class="search-input" placeholder="Search headlines…" autocomplete="off">
+        </div>
+        <div class="filter-group">
+          <div class="filter-group-title">Sector</div>
+          <div class="f-tag active" data-cn-sec=""><span class="f-dot" style="background:#64748b"></span><span>All sectors</span><span class="f-count">{{ china_total }}</span></div>
+          {% for sec, data in china_news.items() %}
+          <div class="f-tag" data-cn-sec="{{ sec }}"><span class="f-dot" style="background:{{ data.color }}"></span><span>{{ sec }}</span><span class="f-count">{{ data.articles|length }}</span></div>
+          {% endfor %}
+        </div>
+      </aside>
+      <main class="feed">
+        <div class="feed-header"><span class="feed-count"><strong id="cnFeedN">{{ china_total }}</strong> headlines</span></div>
+        <div id="cnFeed">
+          {% for a in china_articles %}
+          <div class="news-card" data-cn-sec="{{ a.sector }}" data-cn-q="{{ a.title|lower }} {{ a.sector|lower }} {{ a.source|lower }}">
+            <div class="card-bar" style="background:{{ a.color }}"></div>
+            <div class="card-body">
+              <div class="card-badges">
+                <span class="badge-co" style="color:{{ a.color }};background:{{ a.color }}18;border-color:{{ a.color }}40">{{ a.sector }}</span>
+              </div>
+              <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
+              <div class="card-meta"><span class="meta-src">{{ a.source }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>
+            </div>
+            <div class="card-time" data-ts="{{ a.published }}">{{ a.elapsed }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="no-results" id="cnNoRes" style="display:none"><div class="no-results-title">No headlines found</div><div>Try a different sector.</div></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Charts tab -->
+  <div class="tab-panel" id="cnPanelCharts">
+    <div id="cnCharts"><!-- built by JS --></div>
+  </div>
+
+  <!-- Catalog tab -->
+  <div class="tab-panel" id="cnPanelCatalog">
+    <div class="catalog-bar">
+      <input  type="text" id="catSearch"   class="catalog-search" placeholder="Search datasets…" autocomplete="off">
+      <select              id="catCategory" class="catalog-cat"><option value="">All categories</option></select>
+      <span id="catCount" class="catalog-count"></span>
+    </div>
+    <div class="catalog-grid" id="catGrid"><!-- built by JS --></div>
+  </div>
+
+  <!-- Events tab -->
+  <div class="tab-panel" id="cnPanelEvents">
+    {% for month_label, month_events in china_event_months %}
+    <div class="ev-month-header">{{ month_label }}</div>
+    {% for ev in month_events %}
+    <div class="ev-row ev-{{ ev.type }}{% if ev.is_past %} is-past{% endif %}{% if ev.is_today %} is-today{% endif %}">
+      <div class="ev-date"><div class="ev-date-day">{{ ev.date_obj.day }}</div><div class="ev-date-month">{{ ev.date_obj.strftime('%b') }}</div></div>
+      <div class="ev-bar"></div>
+      <div class="ev-body">
+        <div class="ev-badges">
+          <span class="ev-type-badge">{{ ev.type }}</span>
+          {% if ev.sector %}<span class="badge-sec">{{ ev.sector }}</span>{% endif %}
+        </div>
+        <div class="ev-title">{{ ev.title }}</div>
+        {% if ev.description %}<div class="ev-desc">{{ ev.description }}</div>{% endif %}
+      </div>
+      <div class="ev-countdown {% if ev.is_today %}today{% elif ev.is_soon %}soon{% elif ev.is_past %}past{% else %}future{% endif %}">{{ ev.countdown }}</div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+  </div>
+
+</div><!-- /chinaPage -->
+
+
+<!-- ══════════════════════════════════════════════
+     CREDIT PAGE
+══════════════════════════════════════════════ -->
+<div id="creditPage" class="page">
+
+  <div class="tab-nav">
+    <button class="tab-btn cr-tab active" id="crTabNews"   onclick="crTab('news')"   style="border-bottom-color:var(--cr-violet)">Credit News <span class="tab-badge" style="background:var(--cr-dim);color:var(--cr-violet)" id="crNewsBadge">{{ credit_total }}</span></button>
+    <button class="tab-btn cr-tab"        id="crTabCharts" onclick="crTab('charts')">Credit Data <span class="tab-badge">{{ num_credit_datasets }}</span></button>
+  </div>
+
+  <!-- News tab (default) -->
+  <div class="tab-panel active" id="crPanelNews">
+    <div class="with-sidebar">
+      <aside class="sidebar">
+        <div class="search-wrap">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+          <input type="text" id="crSearch" class="search-input" placeholder="Search headlines…" autocomplete="off">
+        </div>
+        <div class="filter-group">
+          <div class="filter-group-title">Sector</div>
+          <div class="f-tag active" data-cr-sec=""><span class="f-dot" style="background:#64748b"></span><span>All sectors</span><span class="f-count">{{ credit_total }}</span></div>
+          {% for sec, data in credit_news.items() %}
+          <div class="f-tag" data-cr-sec="{{ sec }}"><span class="f-dot" style="background:{{ data.color }}"></span><span>{{ sec }}</span><span class="f-count">{{ data.articles|length }}</span></div>
+          {% endfor %}
+        </div>
+      </aside>
+      <main class="feed">
+        <div class="feed-header"><span class="feed-count"><strong id="crFeedN">{{ credit_total }}</strong> headlines</span></div>
+        <div id="crFeed">
+          {% for a in credit_articles %}
+          <div class="news-card" data-cr-sec="{{ a.sector }}" data-cr-q="{{ a.title|lower }} {{ a.sector|lower }} {{ a.source|lower }}">
+            <div class="card-bar" style="background:{{ a.color }}"></div>
+            <div class="card-body">
+              <div class="card-badges">
+                <span class="badge-co" style="color:{{ a.color }};background:{{ a.color }}18;border-color:{{ a.color }}40">{{ a.sector }}</span>
+              </div>
+              <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
+              <div class="card-meta"><span class="meta-src">{{ a.source }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>
+            </div>
+            <div class="card-time" data-ts="{{ a.published }}">{{ a.elapsed }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="no-results" id="crNoRes" style="display:none"><div class="no-results-title">No headlines found</div><div>Try a different sector.</div></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Credit Data tab -->
+  <div class="tab-panel" id="crPanelCharts">
+    <div id="crCharts"><!-- built by JS --></div>
+  </div>
+
+</div><!-- /creditPage -->
+
+
+<footer class="footer">
+  <span>Portfolio Intelligence · Charts via <a href="https://chinadata.live" target="_blank">chinadata.live</a></span>
+  <span>Generated {{ generated }}</span>
+</footer>
+
+
+<script>
+const CHINA_DATASETS  = {{ china_datasets_json }};
+const CHINA_CHARTS    = {{ china_charts_json }};
+const CHINA_CATALOG   = {{ china_catalog_json }};
+const BRAZIL_DATASETS = {{ brazil_datasets_json }};
+const BRAZIL_CHARTS   = {{ brazil_charts_json }};
+const CREDIT_DATASETS = {{ credit_datasets_json }};
+const CREDIT_CHARTS   = {{ credit_charts_json }};
+
+// ── Page switching ────────────────────────────────────────────────────────
+function showPage(name) {
+  ['portfolio','brazil','china','credit'].forEach(p => {
+    document.getElementById(p + 'Page').classList.toggle('active', p === name);
+    document.getElementById('btn' + p.charAt(0).toUpperCase() + p.slice(1)).classList.toggle('active', p === name);
+  });
+  if (name === 'china' && !window._catalogBuilt) { buildCatalog(); window._catalogBuilt = true; }
+}
+
+// ── Portfolio tabs ────────────────────────────────────────────────────────
+function pfTab(name) {
+  ['News','Events'].forEach(t => {
+    document.getElementById(`pfPanel${t}`).classList.toggle('active', t.toLowerCase() === name);
+    const btn = document.getElementById(`pfTab${t}`);
+    btn.classList.toggle('active', t.toLowerCase() === name);
+    btn.style.borderBottomColor = t.toLowerCase() === name ? 'var(--accent)' : 'transparent';
+  });
+}
+
+// ── Credit tabs ───────────────────────────────────────────────────────────
+function crTab(name) {
+  ['News','Charts'].forEach(t => {
+    document.getElementById(`crPanel${t}`).classList.toggle('active', t.toLowerCase() === name);
+    const btn = document.getElementById(`crTab${t}`);
+    btn.classList.toggle('active', t.toLowerCase() === name);
+    btn.style.borderBottomColor = t.toLowerCase() === name ? 'var(--cr-violet)' : 'transparent';
+  });
+  if (name === 'charts' && !window._crChartsBuilt) {
+    window._crChartsBuilt = true;
+    requestAnimationFrame(() => requestAnimationFrame(() => buildCrCharts()));
+  }
+}
+
+// ── Brazil tabs ───────────────────────────────────────────────────────────
+function brTab(name) {
+  ['News','Events','Charts'].forEach(t => {
+    document.getElementById(`brPanel${t}`).classList.toggle('active', t.toLowerCase() === name);
+    const btn = document.getElementById(`brTab${t}`);
+    btn.classList.toggle('active', t.toLowerCase() === name);
+    btn.style.borderBottomColor = t.toLowerCase() === name ? 'var(--br-green)' : 'transparent';
+  });
+  if (name === 'charts' && !window._brChartsBuilt) {
+    window._brChartsBuilt = true;
+    requestAnimationFrame(() => requestAnimationFrame(() => buildBrCharts()));
+  }
+}
+
+// ── China tabs ────────────────────────────────────────────────────────────
+function cnTab(name) {
+  ['Charts','News','Events','Catalog'].forEach(t => {
+    document.getElementById(`cnPanel${t}`).classList.toggle('active', t.toLowerCase() === name);
+    const btn = document.getElementById(`cnTab${t}`);
+    btn.classList.toggle('active', t.toLowerCase() === name);
+    btn.style.borderBottomColor = t.toLowerCase() === name ? 'var(--cn-red)' : 'transparent';
+  });
+  // Build charts the first time the user opens that tab — defer with rAF so
+  // Plotly measures real dimensions after the panel becomes visible.
+  if (name === 'charts' && !window._chartsBuilt) {
+    window._chartsBuilt = true;
+    requestAnimationFrame(() => requestAnimationFrame(() => buildCharts()));
+  }
+}
+
+// ── Portfolio badge colours ───────────────────────────────────────────────
+(function () {
+  const SEC_PAL = ['#2563eb','#059669','#d97706','#7c3aed','#dc2626','#0891b2','#65a30d','#ea580c','#db2777','#0d9488'];
+  const CO_PAL  = [
+    {bg:'rgba(37,99,235,.07)',  bd:'rgba(37,99,235,.25)',  tx:'#1e3a8a'},
+    {bg:'rgba(5,150,105,.07)',  bd:'rgba(5,150,105,.25)',  tx:'#064e3b'},
+    {bg:'rgba(217,119,6,.07)',  bd:'rgba(217,119,6,.25)',  tx:'#78350f'},
+    {bg:'rgba(124,58,237,.07)', bd:'rgba(124,58,237,.25)', tx:'#3b0764'},
+    {bg:'rgba(220,38,38,.07)',  bd:'rgba(220,38,38,.25)',  tx:'#7f1d1d'},
+    {bg:'rgba(8,145,178,.07)',  bd:'rgba(8,145,178,.25)',  tx:'#164e63'},
+    {bg:'rgba(101,163,13,.07)', bd:'rgba(101,163,13,.25)', tx:'#365314'},
+    {bg:'rgba(234,88,12,.07)',  bd:'rgba(234,88,12,.25)',  tx:'#7c2d12'},
+    {bg:'rgba(219,39,119,.07)', bd:'rgba(219,39,119,.25)', tx:'#831843'},
+    {bg:'rgba(13,148,136,.07)', bd:'rgba(13,148,136,.25)', tx:'#134e4a'},
+  ];
+  const secMap = {}, coMap = {}, secList = [], coList = [];
+  document.querySelectorAll('#pfFeed .news-card').forEach(card => {
+    const s = card.querySelector('[data-pf-sec]'), c = card.querySelector('[data-pf-co]');
+    if (s && !secMap[s.dataset.pfSec]) { secMap[s.dataset.pfSec] = SEC_PAL[secList.length % SEC_PAL.length]; secList.push(s.dataset.pfSec); }
+    if (c && !coMap[c.dataset.pfCo])   { coMap[c.dataset.pfCo]   = CO_PAL[coList.length   % CO_PAL.length];  coList.push(c.dataset.pfCo); }
+  });
+  document.querySelectorAll('[data-pf-sec]').forEach(el => el.style.background = secMap[el.dataset.pfSec] || '#64748b');
+  document.querySelectorAll('[data-pf-co]').forEach(el => {
+    const p = coMap[el.dataset.pfCo];
+    if (p) { el.style.background = p.bg; el.style.borderColor = p.bd; el.style.color = p.tx; }
+  });
+  document.querySelectorAll('[data-pf-ev-co]').forEach(el => {
+    const p = coMap[el.dataset.pfEvCo];
+    if (p) { el.style.background = p.bg; el.style.borderColor = p.bd; el.style.color = p.tx; }
+  });
+})();
+
+// ── Portfolio news filtering ──────────────────────────────────────────────
+(function () {
+  const cards = Array.from(document.querySelectorAll('#pfFeed .news-card'));
+  let co = '', sec = '', prov = '', q = '';
+  function apply() {
+    let n = 0;
+    cards.forEach(c => {
+      const show = (!co || c.dataset.co === co) && (!sec || c.dataset.sec === sec)
+                && (!prov || c.dataset.prov === prov) && (!q || c.dataset.q.includes(q));
+      c.style.display = show ? '' : 'none';
+      if (show) n++;
+    });
+    ['pfCount','pfNewsBadge','pfFeedN'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = n; });
+    document.getElementById('pfNoRes').style.display = n === 0 ? '' : 'none';
+  }
+  document.getElementById('pfCompany').addEventListener('change',  e => { co   = e.target.value; apply(); });
+  document.getElementById('pfSector').addEventListener('change',   e => { sec  = e.target.value; apply(); });
+  document.getElementById('pfProvider').addEventListener('change', e => { prov = e.target.value; apply(); });
+  document.getElementById('pfSearch').addEventListener('input',    e => { q    = e.target.value.toLowerCase().trim(); apply(); });
+  cards.forEach(card => card.addEventListener('click', e => { if (e.target.tagName !== 'A') { const a = card.querySelector('a'); if (a) window.open(a.href,'_blank','noopener'); } }));
+})();
+
+// ── China news filtering ──────────────────────────────────────────────────
+(function () {
+  const cards = Array.from(document.querySelectorAll('#cnFeed .news-card'));
+  let sec = '', q = '';
+  function apply() {
+    let n = 0;
+    cards.forEach(c => {
+      const show = (!sec || c.dataset.cnSec === sec) && (!q || c.dataset.cnQ.includes(q));
+      c.style.display = show ? '' : 'none';
+      if (show) n++;
+    });
+    ['cnCount','cnNewsBadge','cnFeedN'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = n; });
+    document.getElementById('cnNoRes').style.display = n === 0 ? '' : 'none';
+  }
+  document.querySelectorAll('[data-cn-sec]').forEach(tag => {
+    tag.addEventListener('click', () => {
+      document.querySelectorAll('[data-cn-sec]').forEach(t => t.classList.remove('active'));
+      tag.classList.add('active'); sec = tag.dataset.cnSec; apply();
+    });
+  });
+  document.getElementById('cnSearch').addEventListener('input', e => { q = e.target.value.toLowerCase().trim(); apply(); });
+  cards.forEach(card => card.addEventListener('click', e => { if (e.target.tagName !== 'A') { const a = card.querySelector('a'); if (a) window.open(a.href,'_blank','noopener'); } }));
+})();
+
+// ── Plotly layout (light theme) ───────────────────────────────────────────
+const LAYOUT = {
+  paper_bgcolor: '#ffffff', plot_bgcolor: '#f8fafc',
+  font: {color:'#64748b', family:'Inter, sans-serif', size:10},
+  margin: {t:10, r:10, b:48, l:60},
+  xaxis: {gridcolor:'#e2e8f0', color:'#64748b', tickfont:{size:9}, nticks:8, linecolor:'#e2e8f0'},
+  yaxis: {gridcolor:'#e2e8f0', color:'#64748b', tickfont:{size:9}, zeroline:false, linecolor:'#e2e8f0'},
+  legend: {font:{size:9, color:'#64748b'}, bgcolor:'rgba(255,255,255,.9)', bordercolor:'#e2e8f0', borderwidth:1, x:0, y:1.08, orientation:'h'},
+  hovermode: 'x unified',
+  hoverlabel: {bgcolor:'#ffffff', bordercolor:'#e2e8f0', font:{size:11, color:'#0f172a'}},
+};
+
+// ── Shared: render one Plotly chart from a data array [{date, value, ...}] ──
+function _plotChart(plotEl, statEl, unitEl, ftrEl, traces, chartType, meta) {
+  if (!meta || !meta.data || meta.data.length === 0) {
+    statEl.textContent = 'No data'; statEl.classList.add('chart-error'); return;
+  }
+  try {
+    Plotly.newPlot(
+      plotEl, traces,
+      { ...LAYOUT,
+        barmode:    chartType === 'bar' ? 'stack' : undefined,
+        showlegend: traces.length > 1,
+        height:     220 },
+      { responsive: true, displayModeBar: false }
+    );
+    statEl.classList.add('hidden');
+    if (unitEl) unitEl.textContent = meta.unit   || '';
+    if (ftrEl)  ftrEl.textContent  = meta.source ? `Source: ${meta.source}` : '';
+  } catch (e) {
+    statEl.textContent = 'Chart render error';
+    statEl.classList.add('chart-error');
+  }
+}
+
+function renderChart(ds) {
+  const plotEl = document.getElementById(`plot-${ds.id}`);
+  const statEl = document.getElementById(`stat-${ds.id}`);
+  const unitEl = document.getElementById(`unit-${ds.id}`);
+  const ftrEl  = document.getElementById(`ftr-${ds.id}`);
+  const meta   = CHINA_CHARTS[ds.id];
+
+  if (!meta || !meta.data || !meta.data.length) {
+    statEl.textContent = 'Data not available'; statEl.classList.add('chart-error'); return;
+  }
+  const traces = ds.series.map(s => {
+    const x = meta.data.map(p => p.date);
+    const y = meta.data.map(p => (s.key in p ? p[s.key] : null));
+    return ds.chartType === 'bar'
+      ? {x, y, name:s.label, type:'bar',     marker:{color:s.color}, hovertemplate:`%{y}<extra>${s.label}</extra>`}
+      : {x, y, name:s.label, type:'scatter', mode:'lines', line:{color:s.color, width:2}, hovertemplate:`%{y}<extra>${s.label}</extra>`};
+  });
+  if (!traces.some(t => t.y.some(v => v !== null))) {
+    statEl.textContent = `Key mismatch (available: ${Object.keys(meta.data[0]).filter(k=>k!=='date').join(', ')})`;
+    statEl.classList.add('chart-error'); return;
+  }
+  _plotChart(plotEl, statEl, unitEl, ftrEl, traces, ds.chartType, meta);
+}
+
+function _buildGrid(datasets, container, makeCardHTML) {
+  /** Build section headers + card DOM. Returns array of [ds, plotEl, statEl, unitEl, ftrEl]. */
+  const groups  = new Map();
+  datasets.forEach(ds => { if (!groups.has(ds.sector)) groups.set(ds.sector,[]); groups.get(ds.sector).push(ds); });
+  const pending = [];
+  groups.forEach((dsArr, sector) => {
+    const hdr = document.createElement('div');
+    hdr.className = 'chart-section-header';
+    hdr.style.borderLeftColor = dsArr[0].sectorColor || '#64748b';
+    hdr.textContent = sector;
+    container.appendChild(hdr);
+    const grid = document.createElement('div');
+    grid.className = 'chart-grid';
+    dsArr.forEach(ds => {
+      const card = document.createElement('div');
+      card.className = 'chart-card';
+      card.innerHTML = makeCardHTML(ds);
+      grid.appendChild(card);
+      pending.push(ds);
+    });
+    container.appendChild(grid);
+  });
+  return pending;
+}
+
+function buildCharts() {
+  const container = document.getElementById('cnCharts');
+  const pending   = _buildGrid(CHINA_DATASETS, container, ds => `
+    <div class="chart-card-header">
+      <div><div class="chart-title">${ds.title}</div><div class="chart-unit" id="unit-${ds.id}"></div></div>
+      <a href="https://chinadata.live/api/v2/data/${ds.id}?format=csv" class="btn-dl" download>↓ CSV</a>
+    </div>
+    <div class="chart-status" id="stat-${ds.id}"><div class="spinner"></div> Loading…</div>
+    <div class="chart-plot"   id="plot-${ds.id}"></div>
+    <div class="chart-footer" id="ftr-${ds.id}"></div>`);
+  // Yield to browser so newly added elements get layout, then render
+  requestAnimationFrame(() => pending.forEach(ds => renderChart(ds)));
+}
+
+// ── Credit news filtering ─────────────────────────────────────────────────
+(function () {
+  const cards = Array.from(document.querySelectorAll('#crFeed .news-card'));
+  let sec = '', q = '';
+  function apply() {
+    let n = 0;
+    cards.forEach(c => {
+      const show = (!sec || c.dataset.crSec === sec) && (!q || c.dataset.crQ.includes(q));
+      c.style.display = show ? '' : 'none';
+      if (show) n++;
+    });
+    ['crNewsBadge','crFeedN'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = n; });
+    document.getElementById('crNoRes').style.display = n === 0 ? '' : 'none';
+  }
+  document.querySelectorAll('[data-cr-sec]').forEach(tag => {
+    tag.addEventListener('click', () => {
+      document.querySelectorAll('[data-cr-sec]').forEach(t => t.classList.remove('active'));
+      tag.classList.add('active'); sec = tag.dataset.crSec; apply();
+    });
+  });
+  document.getElementById('crSearch').addEventListener('input', e => { q = e.target.value.toLowerCase().trim(); apply(); });
+  cards.forEach(card => card.addEventListener('click', e => { if (e.target.tagName !== 'A') { const a = card.querySelector('a'); if (a) window.open(a.href,'_blank','noopener'); } }));
+})();
+
+// ── Credit charts ─────────────────────────────────────────────────────────
+function buildCrCharts() {
+  const container = document.getElementById('crCharts');
+  const pending   = _buildGrid(CREDIT_DATASETS, container, ds => {
+    const csv = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${ds.bcb_series}/dados?formato=csv`;
+    return `
+      <div class="chart-card-header">
+        <div><div class="chart-title">${ds.title}</div><div class="chart-unit" id="cr-unit-${ds.id}"></div></div>
+        <a href="${csv}" class="btn-dl" download>↓ CSV</a>
+      </div>
+      <div class="chart-status" id="cr-stat-${ds.id}"><div class="spinner"></div> Loading…</div>
+      <div class="chart-plot"   id="cr-plot-${ds.id}"></div>
+      <div class="chart-footer" id="cr-ftr-${ds.id}"></div>`;
+  });
+  requestAnimationFrame(() => pending.forEach(ds => {
+    const meta = CREDIT_CHARTS[ds.id];
+    const x    = meta && meta.data ? meta.data.map(p => p.date)  : [];
+    const y    = meta && meta.data ? meta.data.map(p => p.value) : [];
+    const trace = ds.chartType === 'bar'
+      ? {x, y, type:'bar',     marker:{color:ds.color}, hovertemplate:'%{y}<extra></extra>'}
+      : {x, y, type:'scatter', mode:'lines', line:{color:ds.color, width:2}, hovertemplate:'%{y}<extra></extra>'};
+    _plotChart(
+      document.getElementById(`cr-plot-${ds.id}`),
+      document.getElementById(`cr-stat-${ds.id}`),
+      document.getElementById(`cr-unit-${ds.id}`),
+      document.getElementById(`cr-ftr-${ds.id}`),
+      [trace], ds.chartType, meta
+    );
+  }));
+}
+
+// ── Brazil news filtering ─────────────────────────────────────────────────
+(function () {
+  const cards = Array.from(document.querySelectorAll('#brFeed .news-card'));
+  let sec = '', q = '';
+  function apply() {
+    let n = 0;
+    cards.forEach(c => {
+      const show = (!sec || c.dataset.brSec === sec) && (!q || c.dataset.brQ.includes(q));
+      c.style.display = show ? '' : 'none';
+      if (show) n++;
+    });
+    ['brCount','brNewsBadge','brFeedN'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = n; });
+    document.getElementById('brNoRes').style.display = n === 0 ? '' : 'none';
+  }
+  document.querySelectorAll('[data-br-sec]').forEach(tag => {
+    tag.addEventListener('click', () => {
+      document.querySelectorAll('[data-br-sec]').forEach(t => t.classList.remove('active'));
+      tag.classList.add('active'); sec = tag.dataset.brSec; apply();
+    });
+  });
+  document.getElementById('brSearch').addEventListener('input', e => { q = e.target.value.toLowerCase().trim(); apply(); });
+  cards.forEach(card => card.addEventListener('click', e => { if (e.target.tagName !== 'A') { const a = card.querySelector('a'); if (a) window.open(a.href,'_blank','noopener'); } }));
+})();
+
+// ── Brazil macro charts ───────────────────────────────────────────────────
+function buildBrCharts() {
+  const container = document.getElementById('brCharts');
+  const pending   = _buildGrid(BRAZIL_DATASETS, container, ds => {
+    const csv = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${ds.bcb_series}/dados?formato=csv`;
+    return `
+      <div class="chart-card-header">
+        <div><div class="chart-title">${ds.title}</div><div class="chart-unit" id="br-unit-${ds.id}"></div></div>
+        <a href="${csv}" class="btn-dl" download>↓ CSV</a>
+      </div>
+      <div class="chart-status" id="br-stat-${ds.id}"><div class="spinner"></div> Loading…</div>
+      <div class="chart-plot"   id="br-plot-${ds.id}"></div>
+      <div class="chart-footer" id="br-ftr-${ds.id}"></div>`;
+  });
+  requestAnimationFrame(() => pending.forEach(ds => {
+    const meta  = BRAZIL_CHARTS[ds.id];
+    const x     = meta && meta.data ? meta.data.map(p => p.date)  : [];
+    const y     = meta && meta.data ? meta.data.map(p => p.value) : [];
+    const trace = ds.chartType === 'bar'
+      ? {x, y, type:'bar',     marker:{color:ds.color}, hovertemplate:'%{y}<extra></extra>'}
+      : {x, y, type:'scatter', mode:'lines', line:{color:ds.color, width:2}, hovertemplate:'%{y}<extra></extra>'};
+    _plotChart(
+      document.getElementById(`br-plot-${ds.id}`),
+      document.getElementById(`br-stat-${ds.id}`),
+      document.getElementById(`br-unit-${ds.id}`),
+      document.getElementById(`br-ftr-${ds.id}`),
+      [trace], ds.chartType, meta
+    );
+  }));
+}
+
+// ── Dataset catalog ───────────────────────────────────────────────────────
+function buildCatalog() {
+  // Populate category filter
+  const cats = [...new Set(CHINA_CATALOG.map(d => d.category).filter(Boolean))].sort();
+  const catSel = document.getElementById('catCategory');
+  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
+  document.getElementById('cnCatalogBadge').textContent = CHINA_CATALOG.length;
+
+  let filtered = [...CHINA_CATALOG];
+
+  function render() {
+    const q   = document.getElementById('catSearch').value.toLowerCase().trim();
+    const cat = catSel.value;
+    filtered  = CHINA_CATALOG.filter(d =>
+      (!cat || d.category === cat) &&
+      (!q   || d.title.toLowerCase().includes(q) || (d.description||'').toLowerCase().includes(q) || (d.tags||[]).some(t => t.includes(q)))
+    );
+    document.getElementById('catCount').textContent = `${filtered.length} of ${CHINA_CATALOG.length} datasets`;
+    const grid = document.getElementById('catGrid');
+    grid.innerHTML = '';
+    filtered.forEach(d => {
+      const card = document.createElement('div');
+      card.className = 'cat-card';
+      card.innerHTML = `
+        <div class="cat-card-top">
+          <div class="cat-title">${d.title}</div>
+          <a href="https://chinadata.live/api/v2/data/${d.id}?format=csv" class="cat-dl" download title="Download CSV">↓ CSV</a>
+        </div>
+        <div class="cat-meta">
+          <span class="cat-badge">${d.category || ''}</span>
+          <span class="cat-badge">${d.frequency || ''}</span>
+          ${d.unit ? `<span class="cat-badge">${d.unit}</span>` : ''}
+        </div>
+        ${d.description ? `<div class="cat-desc">${d.description}</div>` : ''}`;
+      grid.appendChild(card);
+    });
+  }
+
+  document.getElementById('catSearch').addEventListener('input', render);
+  catSel.addEventListener('change', render);
+  render();
+}
+// ── Refresh system ────────────────────────────────────────────────────────
+(function () {
+  const TOTAL_STEPS   = 5;
+  let   _pollInterval = null;
+  let   _activeToast  = null;
+  let   _countdownId  = null;
+  let   _serverMode   = false;   // true only when served through server.py
+
+  // ── Toast ────────────────────────────────────────────────────────────────
+  function showToast(message, type, duration) {
+    if (_activeToast) { _activeToast.remove(); _activeToast = null; }
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<span class="toast-msg">${message}</span><span class="toast-close" onclick="this.parentElement.remove()">✕</span>`;
+    document.body.appendChild(t);
+    _activeToast = t;
+    requestAnimationFrame(() => t.classList.add('show'));
+    if (duration && duration < 99999) {
+      setTimeout(() => dismissToast(t), duration);
+    }
+    return t;
+  }
+
+  function updateToast(t, msg) {
+    if (t) { const el = t.querySelector('.toast-msg'); if (el) el.textContent = msg; }
+  }
+
+  function dismissToast(t) {
+    if (!t) return;
+    t.classList.remove('show');
+    setTimeout(() => { if (t.parentNode) t.remove(); if (_activeToast === t) _activeToast = null; }, 300);
+  }
+
+  // ── UI state ─────────────────────────────────────────────────────────────
+  function setRunning(running, label) {
+    const btn  = document.getElementById('refreshBtn');
+    const icon = document.getElementById('refreshIcon');
+    const lbl  = document.getElementById('refreshLabel');
+    const bar  = document.getElementById('refreshProgress');
+    btn.disabled = running;
+    btn.classList.toggle('running', running);
+    icon.classList.toggle('spin', running);
+    if (lbl) lbl.textContent = label || (running ? 'Refreshing…' : 'Refresh');
+    if (bar) bar.classList.toggle('visible', running);
+  }
+
+  function setProgress(step, total, message) {
+    const pct   = total > 0 ? Math.round((step / total) * 100) : 0;
+    const bar   = document.getElementById('rpBar');
+    const label = document.getElementById('rpLabel');
+    const step_ = document.getElementById('rpStep');
+    if (bar)   bar.style.width   = pct + '%';
+    if (label) label.textContent = message || 'Working…';
+    if (step_) step_.textContent = `${step} / ${total}`;
+  }
+
+  // ── Polling ───────────────────────────────────────────────────────────────
+  function startPolling() {
+    if (_pollInterval) return;
+    _pollInterval = setInterval(async () => {
+      try {
+        const s = await (await fetch('/status')).json();
+        if (s.running) {
+          setRunning(true, 'Refreshing…');
+          setProgress(s.step || 0, s.total_steps || TOTAL_STEPS, s.message);
+        } else {
+          stopPolling();
+          setRunning(false, 'Refresh');
+          setProgress(0, TOTAL_STEPS, '');
+          if (s.error) {
+            showToast(`⚠ Refresh error: ${s.error}`, 'error', 8000);
+          } else if (s.message === 'Done') {
+            onRefreshDone();
+          }
+        }
+      } catch (e) {
+        stopPolling();
+        setRunning(false, 'Refresh');
+      }
+    }, 1200);
+  }
+
+  function stopPolling() {
+    if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+  }
+
+  // ── Done — countdown + auto-reload ───────────────────────────────────────
+  function onRefreshDone() {
+    if (_countdownId) clearInterval(_countdownId);
+    let secs = 5;
+    const toast = showToast(`✓ News refreshed — reloading in ${secs}s`, 'success', 99999);
+    _countdownId = setInterval(() => {
+      secs--;
+      if (secs <= 0) {
+        clearInterval(_countdownId);
+        location.reload();
+      } else {
+        updateToast(toast, `✓ News refreshed — reloading in ${secs}s`);
+      }
+    }, 1000);
+  }
+
+  // ── Entry point ───────────────────────────────────────────────────────────
+  window.startRefresh = async function () {
+    if (!_serverMode) {
+      showToast('Run python3 server.py to enable live refresh', 'info', 5000);
+      return;
+    }
+    try {
+      const r    = await fetch('/refresh', { method: 'POST' });
+      const data = await r.json();
+      if (!data.ok) {
+        showToast('Refresh already running…', 'info', 3000);
+      } else {
+        setRunning(true, 'Refreshing…');
+        setProgress(0, TOTAL_STEPS, 'Starting…');
+      }
+      startPolling();
+    } catch (e) {
+      showToast('Cannot connect to server', 'error', 4000);
+    }
+  };
+
+  // On load — detect server mode and resume polling if a refresh was in progress
+  (async function init() {
+    try {
+      const s = await (await fetch('/status', { signal: AbortSignal.timeout(800) })).json();
+      _serverMode = true;
+      if (s.running) {
+        setRunning(true, 'Refreshing…');
+        setProgress(s.step || 0, s.total_steps || TOTAL_STEPS, s.message);
+        startPolling();
+      }
+    } catch (e) {
+      _serverMode = false;
+      // Not running through server.py — button stays visible but shows info on click
+    }
+  })();
+})();
+
+// ── Live relative-time ticker ─────────────────────────────────────────────────
+(function () {
+  function relativeTime(tsStr) {
+    if (!tsStr) return '';
+    const dt = new Date(tsStr);
+    if (isNaN(dt)) return '';
+    const secs = Math.floor((Date.now() - dt) / 1000);
+    if (secs < 60)    return secs + ' sec ago';
+    if (secs < 3600)  return Math.floor(secs / 60) + ' min ago';
+    if (secs < 86400) return Math.floor(secs / 3600) + ' h ago';
+    return Math.floor(secs / 86400) + ' d ago';
+  }
+
+  function refreshTimes() {
+    document.querySelectorAll('.card-time[data-ts]').forEach(el => {
+      const t = relativeTime(el.dataset.ts);
+      if (t) el.textContent = t;
+    });
+  }
+
+  refreshTimes();
+  setInterval(refreshTimes, 60000);
+})();
+</script>
+</body>
+</html>

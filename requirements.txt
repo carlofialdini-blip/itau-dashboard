@@ -1,0 +1,7 @@
+pandas
+openpyxl
+feedparser
+requests
+jinja2
+yfinance
+lxml
