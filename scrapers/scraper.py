@@ -8,15 +8,14 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import quote
 
-import certifi
 import pandas as pd
 import requests
 import feedparser
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
-os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
 ROOT         = Path(__file__).resolve().parent.parent
 EXCEL_FILE   = ROOT / "data" / "portfolio.xlsx"
@@ -187,7 +186,7 @@ def fetch_articles(company: str, keywords: list[str]) -> tuple[list[dict], int, 
     query = build_query(company, keywords)
     url   = google_news_url(query)
 
-    response = requests.get(url, headers=HEADERS, timeout=15)
+    response = requests.get(url, headers=HEADERS, timeout=15, verify=False)
     response.raise_for_status()
 
     feed = feedparser.parse(response.content)

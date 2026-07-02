@@ -17,15 +17,14 @@ import time
 from datetime import date, datetime
 from pathlib import Path
 
-import certifi
 import pandas as pd
 import requests
 import yfinance as yf
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
-os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
 ROOT            = Path(__file__).resolve().parent.parent
 EXCEL_FILE      = ROOT / "data" / "portfolio.xlsx"
@@ -180,6 +179,7 @@ def fetch_ibge() -> list[dict]:
             "https://servicodados.ibge.gov.br/api/v3/calendario/?tipo=pesquisa&qtd=500",
             headers=HEADERS,
             timeout=15,
+            verify=False,
         )
         r.raise_for_status()
         items = r.json().get("items", [])

@@ -5,12 +5,10 @@ from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
-import certifi
-
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
-os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
 import requests
 from jinja2 import Environment, FileSystemLoader
@@ -388,7 +386,7 @@ def fetch_china_charts() -> dict:
         ds_id = ds["id"]
         try:
             r = requests.get(f"{CHINADATA_BASE}/data/{ds_id}",
-                             headers=CHINADATA_HDR, timeout=15)
+                             headers=CHINADATA_HDR, timeout=15, verify=False)
             r.raise_for_status()
             result[ds_id] = r.json()["data"]
             print(f"  {ds_id}: {len(result[ds_id]['data'])} pts")
@@ -401,7 +399,7 @@ def fetch_china_catalog() -> list:
     """Fetch full list of all datasets available on chinadata.live."""
     try:
         r = requests.get(f"{CHINADATA_BASE}/datasets",
-                         headers=CHINADATA_HDR, timeout=15)
+                         headers=CHINADATA_HDR, timeout=15, verify=False)
         r.raise_for_status()
         catalog = r.json()["data"]
         print(f"  {len(catalog)} datasets in catalog")
@@ -547,7 +545,7 @@ def fetch_brazil_charts() -> dict:
 
         url = BCB_BASE.format(series=series_id, start=start_str, end=today_str)
         try:
-            r = requests.get(url, headers=BCB_HDR, timeout=20)
+            r = requests.get(url, headers=BCB_HDR, timeout=20, verify=False)
             r.raise_for_status()
             raw = r.json()
             points = []
@@ -587,7 +585,7 @@ def fetch_credit_charts() -> dict:
         series_id = ds["bcb_series"]
         url = BCB_BASE.format(series=series_id, start=start_str, end=today_str)
         try:
-            r = requests.get(url, headers=BCB_HDR, timeout=20)
+            r = requests.get(url, headers=BCB_HDR, timeout=20, verify=False)
             r.raise_for_status()
             raw    = r.json()
             points = []
