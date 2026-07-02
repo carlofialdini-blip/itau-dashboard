@@ -9,6 +9,7 @@ Run:  python3 credit_scraper.py
 """
 
 import json
+import os
 import re
 import sys
 import time
@@ -17,11 +18,14 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import quote
 
+import certifi
 import requests
 import feedparser
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
 ROOT         = Path(__file__).resolve().parent.parent
 OUTPUT_FILE  = ROOT / "data" / "credit_news_cache.json"
