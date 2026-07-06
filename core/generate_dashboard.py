@@ -15,7 +15,7 @@ from jinja2 import Environment, FileSystemLoader
 
 ROOT = Path(__file__).resolve().parent.parent
 
-MAX_NEWS_AGE_DAYS = 1   # keep today (0) and yesterday (1); anything older is never shown
+MAX_NEWS_AGE_DAYS = 7   # keep articles up to 7 days old
 
 NEWS_FILE          = ROOT / "data" / "news_cache.json"
 EVENTS_FILE        = ROOT / "data" / "events.json"
@@ -610,15 +610,180 @@ def fetch_credit_charts() -> dict:
     return result
 
 
+# ── Cockpit market data ───────────────────────────────────────────────────────
+COCKPIT_GROUPS = [
+    ("Equities",       ["sp500",   "ibov"]),
+    ("Interest Rates", ["us10y",   "br10y"]),
+    ("Exchange Rates", ["brl_usd", "usd_cny", "brl_cny", "brl_eur"]),
+    ("Commodities",    ["brent",   "iron_ore", "pix_bhkp", "pix_nbsk"]),
+]
+
+
+def _ck_make(label, unit, color, series):
+    """Build a cockpit item dict with pre-formatted current value and change."""
+    cur  = series[-1]["y"] if series else None
+    prev = series[-2]["y"] if len(series) >= 2 else None
+    if cur is None:
+        return {"label": label, "unit": unit, "color": color,
+                "current_fmt": "N/A", "change_fmt": "", "change_dir": "", "data": []}
+    if unit == "pts":
+        cur_fmt = f"{cur:,.0f}"
+    elif unit == "%":
+        cur_fmt = f"{cur:.2f}%"
+    else:
+        cur_fmt = f"{cur:,.2f}"
+    if prev and prev != 0:
+        if unit == "%":
+            raw = (cur - prev) * 100          # basis points
+            chg_fmt = f"{'+' if raw >= 0 else ''}{raw:.1f} bps"
+        else:
+            pct = (cur - prev) / abs(prev) * 100
+            chg_fmt = f"{'+' if pct >= 0 else ''}{pct:.2f}%"
+        chg_dir = "pos" if cur >= prev else "neg"
+    else:
+        chg_fmt, chg_dir = "", ""
+    return {"label": label, "unit": unit, "color": color,
+            "current_fmt": cur_fmt, "change_fmt": chg_fmt,
+            "change_dir": chg_dir, "data": series}
+
+
+def _ck_yf(ticker, period="1y"):
+    """Download one Yahoo Finance ticker and return a list of {x, y} dicts."""
+    try:
+        import yfinance as yf
+        df = yf.download(ticker, period=period, interval="1d",
+                         auto_adjust=True, progress=False)
+        if df.empty:
+            return []
+        col = df["Close"]
+        if hasattr(col, "columns"):          # MultiIndex edge case
+            col = col.iloc[:, 0]
+        col = col.dropna()
+        pts = []
+        for idx, v in zip(col.index, col.values):
+            try:
+                fv = float(v)
+                if fv == fv:                 # exclude NaN
+                    pts.append({"x": str(idx.date()), "y": round(fv, 4)})
+            except (TypeError, ValueError):
+                pass
+        return pts
+    except Exception as e:
+        print(f"    {ticker}: {e}")
+        return []
+
+
+def _ck_fred(series_id, max_pts=60):
+    """Fetch a FRED series via its public CSV endpoint (no API key needed)."""
+    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
+    try:
+        r = requests.get(url, timeout=15, verify=False)
+        r.raise_for_status()
+        lines = r.text.strip().split("\n")
+        pts = []
+        for line in lines[1:]:
+            p = line.split(",")
+            if len(p) != 2 or p[1].strip() in (".", ""):
+                continue
+            try:
+                pts.append({"x": p[0].strip(), "y": round(float(p[1].strip()), 2)})
+            except ValueError:
+                pass
+        return pts[-max_pts:]
+    except Exception as e:
+        print(f"    FRED {series_id}: {e}")
+        return []
+
+
+def _ck_br10y():
+    """BCB OLINDA series 12511 — ETTJ B-type ~10Y (IPCA-linked yield curve)."""
+    today_ = date.today()
+    start  = (today_ - timedelta(days=400)).strftime("%d/%m/%Y")
+    end_   = today_.strftime("%d/%m/%Y")
+    url    = (f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.12511/dados"
+              f"?formato=json&dataInicial={start}&dataFinal={end_}")
+    try:
+        r = requests.get(url, headers=BCB_HDR, timeout=40, verify=False)
+        r.raise_for_status()
+        pts = []
+        for pt in r.json():
+            try:
+                p = pt["data"].split("/")
+                pts.append({"x": f"{p[2]}-{p[1]}-{p[0]}",
+                             "y": round(float(pt["valor"].replace(",", ".")), 4)})
+            except Exception:
+                pass
+        return pts
+    except Exception as e:
+        print(f"    BCB 12511: {e}")
+        return []
+
+
+def fetch_cockpit_data():
+    import time as _time
+
+    print("  Fetching cockpit market data...")
+    data = {}
+
+    yf_map = [
+        ("sp500",   "^GSPC",    "S&P 500",          "pts",    "#3b82f6"),
+        ("ibov",    "^BVSP",    "IBOVESPA",          "pts",    "#16a34a"),
+        ("us10y",   "^TNX",     "US 10Y Treasury",   "%",      "#ef4444"),
+        ("brl_usd", "USDBRL=X", "BRL / USD",         "BRL",    "#8b5cf6"),
+        ("usd_cny", "USDCNY=X", "USD / CNY",         "CNY",    "#f59e0b"),
+        ("brl_eur", "EURBRL=X", "EUR / BRL",         "BRL",    "#0284c7"),
+        ("brent",   "BZ=F",     "Brent Crude",       "USD/bbl","#1e293b"),
+    ]
+    for key, ticker, label, unit, color in yf_map:
+        print(f"    {label}...")
+        data[key] = _ck_make(label, unit, color, _ck_yf(ticker))
+        _time.sleep(0.3)
+
+    # BRL/CNY: direct ticker, then compute from USDBRL + USDCNY as fallback
+    print("    BRL / CNY...")
+    brlcny = _ck_yf("BRLCNY=X")
+    if not brlcny:
+        brl_s = {p["x"]: p["y"] for p in data["brl_usd"]["data"]}
+        cny_s = {p["x"]: p["y"] for p in data["usd_cny"]["data"]}
+        brlcny = [{"x": d, "y": round(cny_s[d] / brl_s[d], 4)}
+                  for d in sorted(set(brl_s) & set(cny_s))
+                  if brl_s[d] and brl_s[d] != 0]
+    data["brl_cny"] = _ck_make("BRL / CNY", "CNY", "#06b6d4", brlcny)
+
+    # Brazil ~10Y via BCB
+    print("    Brazil 10Y (BCB)...")
+    data["br10y"] = _ck_make("Brazil 10Y (B-type)", "%", "#d97706", _ck_br10y())
+
+    # Iron ore: yfinance TIO=F, then FRED PIORECRUSD as fallback
+    print("    Iron Ore...")
+    iron = _ck_yf("TIO=F")
+    if not iron:
+        iron = _ck_fred("PIORECRUSD", max_pts=52)
+    data["iron_ore"] = _ck_make("Iron Ore 62% Fe", "USD/t", "#92400e", iron)
+
+    # PIX pulp proxies via FRED (WPU0912 = PPI Pulp, Paper & Allied Products)
+    print("    PIX BHKP / NBSK (FRED proxy)...")
+    pulp = _ck_fred("WPU0912", max_pts=52)
+    data["pix_bhkp"] = _ck_make("PIX BHKP Short Fibre *", "index", "#059669", pulp)
+    data["pix_nbsk"] = _ck_make("PIX NBSK Long Fibre *",  "index", "#0d9488", pulp)
+
+    return data
+
+
 def render(rows, companies, sectors, providers, events, event_months,
            china_news, china_articles, china_events, china_event_months,
            china_charts, china_catalog,
            brazil_news, brazil_articles, brazil_events, brazil_event_months,
            brazil_charts,
-           credit_news, credit_articles, credit_charts):
+           credit_news, credit_articles, credit_charts,
+           cockpit):
     env      = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
     template = env.get_template(TEMPLATE_FILE)
     html = template.render(
+        # Cockpit
+        cockpit=cockpit,
+        cockpit_groups=COCKPIT_GROUPS,
+        cockpit_json=json.dumps(cockpit),
         # Portfolio
         articles=rows,
         companies=companies,
@@ -701,12 +866,16 @@ def main():
     print("Fetching Credit market charts (BCB)...")
     credit_charts = fetch_credit_charts()
 
+    print("Fetching cockpit market data...")
+    cockpit = fetch_cockpit_data()
+
     render(rows, companies, sectors, providers, events, event_months,
            china_news, china_articles, china_events, china_event_months,
            china_charts, china_catalog,
            brazil_news, brazil_articles, brazil_events, brazil_event_months,
            brazil_charts,
-           credit_news, credit_articles, credit_charts)
+           credit_news, credit_articles, credit_charts,
+           cockpit)
     print("\ndashboard.html generated successfully.")
 
 

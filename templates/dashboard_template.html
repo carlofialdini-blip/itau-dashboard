@@ -311,35 +311,64 @@ body {
 .tab-panel.active { display: block; }
 .with-sidebar { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 210px); }
 
-/* ── REFRESH BUTTON ── */
-.refresh-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 5px 12px; border-radius: 6px;
-  border: 1px solid var(--border-2);
-  background: var(--bg); color: var(--text-muted);
-  font-size: 11px; font-weight: 600;
-  cursor: pointer; font-family: inherit;
-  transition: all .15s; flex-shrink: 0;
-  user-select: none;
-}
-.refresh-btn:hover:not(:disabled) { color: var(--text); border-color: var(--text-muted); }
-.refresh-btn:disabled { opacity: .55; cursor: not-allowed; }
-.refresh-btn.running  { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
-.refresh-icon { width: 13px; height: 13px; flex-shrink: 0; }
-.refresh-icon.spin { animation: spin .7s linear infinite; }
 
-/* ── PROGRESS BAR ── */
-.refresh-progress {
-  position: fixed; top: 52px; left: 0; right: 0; z-index: 400;
-  background: var(--bg-2); border-bottom: 1px solid var(--border);
-  padding: 8px 24px;
-  display: none; align-items: center; gap: 12px;
-  font-size: 12px; color: var(--text-muted);
+/* ── MARKET OVERVIEW ── */
+.mkt-overview {
+  padding: 16px 24px 12px;
+  border-bottom: 2px solid var(--border);
+  background: var(--bg);
 }
-.refresh-progress.visible { display: flex; }
-.rp-bar-wrap { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
-.rp-bar      { height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s ease; }
-.rp-label    { font-weight: 500; color: var(--text); min-width: 200px; }
+.mkt-overview-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.mkt-overview-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .9px; color: var(--text-muted);
+}
+.mkt-updated { font-size: 10px; color: var(--text-muted); }
+.mkt-group { margin-bottom: 14px; }
+.mkt-group:last-child { margin-bottom: 4px; }
+.mkt-group-lbl {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.1px; color: var(--text-muted);
+  margin-bottom: 7px; padding-left: 1px;
+}
+.mkt-grid {
+  display: grid; gap: 8px;
+}
+.mkt-card {
+  border: 1px solid var(--border); border-radius: 8px;
+  overflow: hidden; background: var(--bg);
+  transition: box-shadow .15s;
+}
+.mkt-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+.mkt-card-meta {
+  padding: 9px 11px 5px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.mkt-card-name {
+  font-size: 9px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .6px;
+}
+.mkt-card-val {
+  font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
+  line-height: 1.2; color: var(--text);
+  display: flex; align-items: baseline; gap: 5px;
+}
+.mkt-chg {
+  font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.mkt-chg.pos { color: var(--green); }
+.mkt-chg.neg { color: var(--cn-red); }
+.mkt-card-chart { height: 100px; }
+.mkt-no-data {
+  height: 100px; display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: var(--text-muted); font-style: italic;
+}
+.mkt-footnote {
+  font-size: 9px; color: var(--text-muted); margin-top: 6px; padding-left: 1px;
+}
 
 /* ── TOAST ── */
 .toast {
@@ -389,7 +418,7 @@ body {
   </div>
 
   <div class="page-switcher">
-    <button class="page-btn portfolio active" id="btnPortfolio" onclick="showPage('portfolio')">📊 Portfolio</button>
+    <button class="page-btn portfolio active" id="btnPortfolio" onclick="showPage('portfolio')">📊 Cockpit</button>
     <button class="page-btn brazil"           id="btnBrazil"   onclick="showPage('brazil')">🇧🇷 Brazil</button>
     <button class="page-btn china"            id="btnChina"    onclick="showPage('china')">🇨🇳 China</button>
     <button class="page-btn credit"           id="btnCredit"   onclick="showPage('credit')">💳 Credit</button>
@@ -398,27 +427,45 @@ body {
   <div class="hdr-right">
     <div class="live-badge"><div class="live-dot"></div>Live</div>
     <div class="hdr-ts">Updated {{ generated }}</div>
-    <button id="refreshBtn" class="refresh-btn" onclick="startRefresh()" title="Fetch latest news">
-      <svg class="refresh-icon" id="refreshIcon" viewBox="0 0 20 20" fill="currentColor">
-        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
-      </svg>
-      <span id="refreshLabel">Refresh</span>
-    </button>
   </div>
 </header>
 
-<!-- Progress bar (shown during refresh) -->
-<div class="refresh-progress" id="refreshProgress">
-  <span class="rp-label" id="rpLabel">Refreshing…</span>
-  <div class="rp-bar-wrap"><div class="rp-bar" id="rpBar" style="width:0%"></div></div>
-  <span id="rpStep" style="font-size:11px;white-space:nowrap"></span>
-</div>
-
 
 <!-- ══════════════════════════════════════════════
-     PORTFOLIO PAGE
+     COCKPIT PAGE
 ══════════════════════════════════════════════ -->
 <div id="portfolioPage" class="page active">
+
+  <!-- ── Market Overview ───────────────────────────────────────────────── -->
+  <div class="mkt-overview">
+    <div class="mkt-overview-hdr">
+      <span class="mkt-overview-title">Market Overview</span>
+      <span class="mkt-updated">{{ generated }}</span>
+    </div>
+
+    {% for group_name, keys in cockpit_groups %}
+    <div class="mkt-group">
+      <div class="mkt-group-lbl">{{ group_name }}</div>
+      <div class="mkt-grid" style="grid-template-columns:repeat({{ keys|length }},1fr)">
+        {% for key in keys %}
+        {% set item = cockpit[key] %}
+        <div class="mkt-card">
+          <div class="mkt-card-meta">
+            <span class="mkt-card-name">{{ item.label }}</span>
+            <div class="mkt-card-val">
+              {{ item.current_fmt }}
+              {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
+            </div>
+          </div>
+          <div class="mkt-card-chart" id="mkt-{{ key }}"></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="mkt-footnote">* PIX BHKP / NBSK: FOEX subscription required for exact index. Showing World Bank wood pulp proxy (PWOODPULP) where available.</div>
+  </div>
 
   <div class="tab-nav">
     <button class="tab-btn active" id="pfTabNews"   onclick="pfTab('news')"   style="border-bottom-color:var(--accent)">News Feed <span class="tab-badge" id="pfNewsBadge">{{ articles|length }}</span></button>
@@ -727,6 +774,7 @@ body {
 
 
 <script>
+const COCKPIT_DATA    = {{ cockpit_json }};
 const CHINA_DATASETS  = {{ china_datasets_json }};
 const CHINA_CHARTS    = {{ china_charts_json }};
 const CHINA_CATALOG   = {{ china_catalog_json }};
@@ -1126,144 +1174,74 @@ function buildCatalog() {
   catSel.addEventListener('change', render);
   render();
 }
-// ── Refresh system ────────────────────────────────────────────────────────
+
+// ── Cockpit market charts ─────────────────────────────────────────────────────
 (function () {
-  const TOTAL_STEPS   = 5;
-  let   _pollInterval = null;
-  let   _activeToast  = null;
-  let   _countdownId  = null;
-  let   _serverMode   = false;   // true only when served through server.py
-
-  // ── Toast ────────────────────────────────────────────────────────────────
-  function showToast(message, type, duration) {
-    if (_activeToast) { _activeToast.remove(); _activeToast = null; }
-    const t = document.createElement('div');
-    t.className = `toast ${type}`;
-    t.innerHTML = `<span class="toast-msg">${message}</span><span class="toast-close" onclick="this.parentElement.remove()">✕</span>`;
-    document.body.appendChild(t);
-    _activeToast = t;
-    requestAnimationFrame(() => t.classList.add('show'));
-    if (duration && duration < 99999) {
-      setTimeout(() => dismissToast(t), duration);
-    }
-    return t;
-  }
-
-  function updateToast(t, msg) {
-    if (t) { const el = t.querySelector('.toast-msg'); if (el) el.textContent = msg; }
-  }
-
-  function dismissToast(t) {
-    if (!t) return;
-    t.classList.remove('show');
-    setTimeout(() => { if (t.parentNode) t.remove(); if (_activeToast === t) _activeToast = null; }, 300);
-  }
-
-  // ── UI state ─────────────────────────────────────────────────────────────
-  function setRunning(running, label) {
-    const btn  = document.getElementById('refreshBtn');
-    const icon = document.getElementById('refreshIcon');
-    const lbl  = document.getElementById('refreshLabel');
-    const bar  = document.getElementById('refreshProgress');
-    btn.disabled = running;
-    btn.classList.toggle('running', running);
-    icon.classList.toggle('spin', running);
-    if (lbl) lbl.textContent = label || (running ? 'Refreshing…' : 'Refresh');
-    if (bar) bar.classList.toggle('visible', running);
-  }
-
-  function setProgress(step, total, message) {
-    const pct   = total > 0 ? Math.round((step / total) * 100) : 0;
-    const bar   = document.getElementById('rpBar');
-    const label = document.getElementById('rpLabel');
-    const step_ = document.getElementById('rpStep');
-    if (bar)   bar.style.width   = pct + '%';
-    if (label) label.textContent = message || 'Working…';
-    if (step_) step_.textContent = `${step} / ${total}`;
-  }
-
-  // ── Polling ───────────────────────────────────────────────────────────────
-  function startPolling() {
-    if (_pollInterval) return;
-    _pollInterval = setInterval(async () => {
-      try {
-        const s = await (await fetch('/status')).json();
-        if (s.running) {
-          setRunning(true, 'Refreshing…');
-          setProgress(s.step || 0, s.total_steps || TOTAL_STEPS, s.message);
-        } else {
-          stopPolling();
-          setRunning(false, 'Refresh');
-          setProgress(0, TOTAL_STEPS, '');
-          if (s.error) {
-            showToast(`⚠ Refresh error: ${s.error}`, 'error', 8000);
-          } else if (s.message === 'Done') {
-            onRefreshDone();
-          }
-        }
-      } catch (e) {
-        stopPolling();
-        setRunning(false, 'Refresh');
-      }
-    }, 1200);
-  }
-
-  function stopPolling() {
-    if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
-  }
-
-  // ── Done — countdown + auto-reload ───────────────────────────────────────
-  function onRefreshDone() {
-    if (_countdownId) clearInterval(_countdownId);
-    let secs = 5;
-    const toast = showToast(`✓ News refreshed — reloading in ${secs}s`, 'success', 99999);
-    _countdownId = setInterval(() => {
-      secs--;
-      if (secs <= 0) {
-        clearInterval(_countdownId);
-        location.reload();
-      } else {
-        updateToast(toast, `✓ News refreshed — reloading in ${secs}s`);
-      }
-    }, 1000);
-  }
-
-  // ── Entry point ───────────────────────────────────────────────────────────
-  window.startRefresh = async function () {
-    if (!_serverMode) {
-      showToast('Run python3 server.py to enable live refresh', 'info', 5000);
-      return;
-    }
-    try {
-      const r    = await fetch('/refresh', { method: 'POST' });
-      const data = await r.json();
-      if (!data.ok) {
-        showToast('Refresh already running…', 'info', 3000);
-      } else {
-        setRunning(true, 'Refreshing…');
-        setProgress(0, TOTAL_STEPS, 'Starting…');
-      }
-      startPolling();
-    } catch (e) {
-      showToast('Cannot connect to server', 'error', 4000);
+  const dlCSVBtn = {
+    name: 'Download CSV',
+    icon: {
+      width: 24, height: 24, ascent: 24, descent: 0,
+      path: 'M12 16l-6-6h4V4h4v6h4l-6 6zm-8 2h16v2H4v-2z'
+    },
+    click(gd) {
+      const t = gd.data[0];
+      const rows = ['Date,Value'];
+      (t.x || []).forEach((x, i) => rows.push(x + ',' + t.y[i]));
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([rows.join('\n')], {type: 'text/csv'}));
+      a.download = ((gd.layout.title || {}).text || 'data').replace(/[\s\/\*]/g, '-') + '.csv';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
     }
   };
 
-  // On load — detect server mode and resume polling if a refresh was in progress
-  (async function init() {
-    try {
-      const s = await (await fetch('/status', { signal: AbortSignal.timeout(800) })).json();
-      _serverMode = true;
-      if (s.running) {
-        setRunning(true, 'Refreshing…');
-        setProgress(s.step || 0, s.total_steps || TOTAL_STEPS, s.message);
-        startPolling();
-      }
-    } catch (e) {
-      _serverMode = false;
-      // Not running through server.py — button stays visible but shows info on click
+  const BASE_CFG = {
+    responsive: true, displayModeBar: true, displaylogo: false,
+    modeBarButtonsToRemove: ['select2d','lasso2d','zoomIn2d','zoomOut2d',
+      'autoScale2d','toggleSpikelines','hoverClosestCartesian',
+      'hoverCompareCartesian','zoom2d','pan2d','resetScale2d'],
+    modeBarButtonsToAdd: [dlCSVBtn]
+  };
+
+  function mkLayout(d) {
+    return {
+      margin: {t: 4, r: 6, b: 22, l: 44},
+      paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+      showlegend: false,
+      xaxis: {
+        showgrid: false, zeroline: false, showline: false,
+        tickfont: {size: 8, color: '#94a3b8'},
+        tickformat: '%b %y', nticks: 5
+      },
+      yaxis: {
+        showgrid: true, gridcolor: '#f1f5f9',
+        zeroline: false, showline: false,
+        tickfont: {size: 8, color: '#94a3b8'},
+        tickformat: d.unit === 'pts' ? ',.0f' : '.2f'
+      },
+      title: {text: d.label, font: {size: 0}}   // hidden — used only for CSV filename
+    };
+  }
+
+  Object.entries(COCKPIT_DATA).forEach(([key, d]) => {
+    const el = document.getElementById('mkt-' + key);
+    if (!el) return;
+    if (!d.data || d.data.length === 0) {
+      el.innerHTML = '<div class="mkt-no-data">Data unavailable</div>';
+      return;
     }
-  })();
+    const xs = d.data.map(p => p.x);
+    const ys = d.data.map(p => p.y);
+    const trace = {
+      x: xs, y: ys,
+      type: 'scatter', mode: 'lines',
+      line: {color: d.color, width: 1.5, shape: 'spline', smoothing: 0.4},
+      fill: 'tozeroy', fillcolor: d.color + '18',
+      hovertemplate: '<b>%{y:.2f}</b> ' + d.unit + '<br>%{x}<extra></extra>'
+    };
+    Plotly.newPlot(el, [trace], mkLayout(d), BASE_CFG);
+  });
 })();
 
 // ── Live relative-time ticker ─────────────────────────────────────────────────
