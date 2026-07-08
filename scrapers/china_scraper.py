@@ -25,18 +25,16 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT         = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from core.net_utils import get_with_retry, DEFAULT_HEADERS  # noqa: E402
+
 OUTPUT_FILE  = ROOT / "data" / "china_news_cache.json"
 MAX_KEEP     = 50   # articles kept per sector after filtering
 MIN_SCORE    = 2    # minimum relevance score
-MAX_AGE_DAYS = 1    # keep today (0) and yesterday (1) only
+MAX_AGE_DAYS = 7    # keep articles up to 7 days old
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 Chrome/122 Safari/537.36"
-    )
-}
+HEADERS = DEFAULT_HEADERS
 
 # ── Sector definitions ───────────────────────────────────────────────────────
 # Each sector has a Google News query and a color for the dashboard.
@@ -165,8 +163,7 @@ def fetch_sector(sector_name: str, config: dict) -> list[dict]:
     keywords = extract_keywords(config["query"])
 
     try:
-        response = requests.get(url, headers=HEADERS, timeout=15, verify=False)
-        response.raise_for_status()
+        response = get_with_retry(url, headers=HEADERS, timeout=20)
         feed = feedparser.parse(response.content)
     except Exception as e:
         print(f"    ERROR fetching {sector_name}: {e}")
@@ -225,7 +222,7 @@ def is_fresh(published: str, now: datetime) -> bool:
 
 
 def balance_by_day(articles: list[dict], now: datetime, max_keep: int) -> list[dict]:
-    today_arts, yest_arts = [], []
+    today_arts, yest_arts, older_arts = [], [], []
     for a in articles:
         try:
             age = (now - parsedate_to_datetime(a["published"])).days
@@ -233,14 +230,21 @@ def balance_by_day(articles: list[dict], now: datetime, max_keep: int) -> list[d
             continue
         if age == 0:   today_arts.append(a)
         elif age == 1: yest_arts.append(a)
+        elif age <= MAX_AGE_DAYS: older_arts.append(a)
     half = max_keep // 2
     t    = today_arts[:half]
     y    = yest_arts[:half]
     gap  = max_keep - len(t) - len(y)
-    if gap > 0:
-        if len(t) < half: y = yest_arts[:len(y) + gap]
-        else:             t = today_arts[:len(t) + gap]
-    return t + y
+    if gap > 0 and len(y) < len(yest_arts):
+        extra = yest_arts[len(y):len(y) + gap]
+        y += extra
+        gap -= len(extra)
+    if gap > 0 and len(t) < len(today_arts):
+        extra = today_arts[len(t):len(t) + gap]
+        t += extra
+        gap -= len(extra)
+    o = older_arts[:gap] if gap > 0 else []
+    return t + y + o
 
 
 def merge_articles(existing: list[dict], new_articles: list[dict], now: datetime) -> list[dict]:
@@ -267,7 +271,7 @@ def main():
 
     print()
     print("=" * 60)
-    print("China News Scraper  (last 3 days only)")
+    print("China News Scraper  (last 7 days)")
     print("=" * 60)
 
     cache = {}

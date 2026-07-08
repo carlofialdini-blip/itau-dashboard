@@ -10,8 +10,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-import requests
 from jinja2 import Environment, FileSystemLoader
+
+from net_utils import get_with_retry
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -207,8 +208,10 @@ def elapsed_time(dt):
 
 
 def balance_by_day(articles: list, now_utc: datetime, max_keep: int) -> list:
-    """Enforce 50% today / 50% yesterday split. Uses the pre-parsed 'datetime' field."""
-    today_arts, yest_arts = [], []
+    """Prefer 50% today / 50% yesterday; fall back to the rest of the
+    MAX_NEWS_AGE_DAYS window when both are sparse. Uses the pre-parsed
+    'datetime' field."""
+    today_arts, yest_arts, older_arts = [], [], []
     for a in articles:
         dt = a.get("datetime")
         if dt is None:
@@ -216,14 +219,21 @@ def balance_by_day(articles: list, now_utc: datetime, max_keep: int) -> list:
         age = (now_utc - dt).days
         if age == 0:   today_arts.append(a)
         elif age == 1: yest_arts.append(a)
+        elif age <= MAX_NEWS_AGE_DAYS: older_arts.append(a)
     half = max_keep // 2
     t    = today_arts[:half]
     y    = yest_arts[:half]
     gap  = max_keep - len(t) - len(y)
-    if gap > 0:
-        if len(t) < half: y = yest_arts[:len(y) + gap]
-        else:             t = today_arts[:len(t) + gap]
-    return t + y
+    if gap > 0 and len(y) < len(yest_arts):
+        extra = yest_arts[len(y):len(y) + gap]
+        y += extra
+        gap -= len(extra)
+    if gap > 0 and len(t) < len(today_arts):
+        extra = today_arts[len(t):len(t) + gap]
+        t += extra
+        gap -= len(extra)
+    o = older_arts[:gap] if gap > 0 else []
+    return t + y + o
 
 def flatten_news(news):
     rows = []
@@ -385,9 +395,8 @@ def fetch_china_charts() -> dict:
     for ds in CHINA_DATASETS:
         ds_id = ds["id"]
         try:
-            r = requests.get(f"{CHINADATA_BASE}/data/{ds_id}",
-                             headers=CHINADATA_HDR, timeout=15, verify=False)
-            r.raise_for_status()
+            r = get_with_retry(f"{CHINADATA_BASE}/data/{ds_id}",
+                                headers=CHINADATA_HDR, timeout=15)
             result[ds_id] = r.json()["data"]
             print(f"  {ds_id}: {len(result[ds_id]['data'])} pts")
         except Exception as e:
@@ -398,9 +407,8 @@ def fetch_china_charts() -> dict:
 def fetch_china_catalog() -> list:
     """Fetch full list of all datasets available on chinadata.live."""
     try:
-        r = requests.get(f"{CHINADATA_BASE}/datasets",
-                         headers=CHINADATA_HDR, timeout=15, verify=False)
-        r.raise_for_status()
+        r = get_with_retry(f"{CHINADATA_BASE}/datasets",
+                            headers=CHINADATA_HDR, timeout=15)
         catalog = r.json()["data"]
         print(f"  {len(catalog)} datasets in catalog")
         return catalog
@@ -545,8 +553,7 @@ def fetch_brazil_charts() -> dict:
 
         url = BCB_BASE.format(series=series_id, start=start_str, end=today_str)
         try:
-            r = requests.get(url, headers=BCB_HDR, timeout=20, verify=False)
-            r.raise_for_status()
+            r = get_with_retry(url, headers=BCB_HDR, timeout=20)
             raw = r.json()
             points = []
             for pt in raw:
@@ -585,8 +592,7 @@ def fetch_credit_charts() -> dict:
         series_id = ds["bcb_series"]
         url = BCB_BASE.format(series=series_id, start=start_str, end=today_str)
         try:
-            r = requests.get(url, headers=BCB_HDR, timeout=20, verify=False)
-            r.raise_for_status()
+            r = get_with_retry(url, headers=BCB_HDR, timeout=20)
             raw    = r.json()
             points = []
             for pt in raw:
@@ -677,8 +683,7 @@ def _ck_fred(series_id, max_pts=60):
     """Fetch a FRED series via its public CSV endpoint (no API key needed)."""
     url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
     try:
-        r = requests.get(url, timeout=15, verify=False)
-        r.raise_for_status()
+        r = get_with_retry(url, timeout=15)
         lines = r.text.strip().split("\n")
         pts = []
         for line in lines[1:]:
@@ -703,8 +708,7 @@ def _ck_br10y():
     url    = (f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.12511/dados"
               f"?formato=json&dataInicial={start}&dataFinal={end_}")
     try:
-        r = requests.get(url, headers=BCB_HDR, timeout=40, verify=False)
-        r.raise_for_status()
+        r = get_with_retry(url, headers=BCB_HDR, timeout=40)
         pts = []
         for pt in r.json():
             try:

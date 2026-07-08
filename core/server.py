@@ -26,25 +26,28 @@ if hasattr(sys.stdout, "reconfigure"):
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
 ROOT = Path(__file__).resolve().parent.parent
 
+SCRIPTS = [
+    (ROOT / "scrapers" / "scraper.py",                    "Portfolio news"),
+    (ROOT / "scrapers" / "china_scraper.py",              "China news"),
+    (ROOT / "scrapers" / "brazil_scraper.py",             "Brazil news"),
+    (ROOT / "scrapers" / "credit_scraper.py",              "Credit news"),
+    (ROOT / "events"   / "events_generator.py",           "Portfolio events"),
+    (ROOT / "events"   / "china_events_generator.py",     "China events"),
+    (ROOT / "events"   / "brazil_events_generator.py",    "Brazil events"),
+    (ROOT / "core"     / "generate_dashboard.py",         "Building dashboard"),
+]
+
 # ── Main refresh state ────────────────────────────────────────────────────────
 _lock   = threading.Lock()
 _status = {
     "running":     False,
     "step":        0,
-    "total_steps": 5,
+    "total_steps": len(SCRIPTS),
     "message":     "Idle",
     "started_at":  None,
     "finished_at": None,
     "error":       None,
 }
-
-SCRIPTS = [
-    (ROOT / "scrapers" / "scraper.py",            "Portfolio news"),
-    (ROOT / "scrapers" / "china_scraper.py",      "China news"),
-    (ROOT / "scrapers" / "brazil_scraper.py",     "Brazil news"),
-    (ROOT / "scrapers" / "credit_scraper.py",     "Credit news"),
-    (ROOT / "core"     / "generate_dashboard.py", "Building dashboard"),
-]
 
 
 def _run_refresh():
@@ -64,14 +67,14 @@ def _run_refresh():
         try:
             result = subprocess.run(
                 [sys.executable, str(script)],
-                capture_output=True, text=True, timeout=180, encoding="utf-8",
+                capture_output=True, text=True, timeout=600, encoding="utf-8",
             )
             if result.returncode != 0:
                 _status["error"]   = f"{script} exited with code {result.returncode}"
                 _status["message"] = f"Error in {script}"
                 break
         except subprocess.TimeoutExpired:
-            _status["error"]   = f"{script} timed out after 180 s"
+            _status["error"]   = f"{script} timed out after 600 s"
             _status["message"] = "Timed out"
             break
         except Exception as e:

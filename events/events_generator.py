@@ -18,7 +18,6 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
-import requests
 import yfinance as yf
 
 import urllib3
@@ -26,17 +25,15 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT            = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from core.net_utils import get_with_retry, DEFAULT_HEADERS  # noqa: E402
+
 EXCEL_FILE      = ROOT / "data" / "portfolio.xlsx"
 OUTPUT_FILE     = ROOT / "data" / "events.json"
 LOOKAHEAD_DAYS  = 180   # include events up to ~6 months ahead
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 Chrome/122 Safari/537.36"
-    )
-}
+HEADERS = DEFAULT_HEADERS
 
 # ── COPOM meeting schedule ────────────────────────────────────────────────────
 # The BCB publishes this calendar every January for the full year. It never
@@ -175,13 +172,10 @@ def fetch_ibge() -> list[dict]:
     }
 
     try:
-        r = requests.get(
+        r = get_with_retry(
             "https://servicodados.ibge.gov.br/api/v3/calendario/?tipo=pesquisa&qtd=500",
-            headers=HEADERS,
-            timeout=15,
-            verify=False,
+            headers=HEADERS, timeout=15,
         )
-        r.raise_for_status()
         items = r.json().get("items", [])
     except Exception as e:
         print(f"    IBGE API error: {e}")

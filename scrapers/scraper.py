@@ -17,20 +17,18 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT         = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from core.net_utils import get_with_retry, DEFAULT_HEADERS  # noqa: E402
+
 EXCEL_FILE   = ROOT / "data" / "portfolio.xlsx"
 OUTPUT_FILE  = ROOT / "data" / "news_cache.json"
 
 MAX_KEEP     = 50   # articles kept per company after filtering
 MIN_SCORE    = 3    # minimum relevance score
-MAX_AGE_DAYS = 1    # keep today (0) and yesterday (1) only
+MAX_AGE_DAYS = 7    # keep articles up to 7 days old
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 Chrome/122 Safari/537.36"
-    )
-}
+HEADERS = DEFAULT_HEADERS
 
 # ── Trusted financial news sources ──────────────────────────────────────────
 # Checked against the `source` field returned by Google News RSS.
@@ -186,9 +184,7 @@ def fetch_articles(company: str, keywords: list[str]) -> tuple[list[dict], int, 
     query = build_query(company, keywords)
     url   = google_news_url(query)
 
-    response = requests.get(url, headers=HEADERS, timeout=15, verify=False)
-    response.raise_for_status()
-
+    response = get_with_retry(url, headers=HEADERS, timeout=20)
     feed = feedparser.parse(response.content)
 
     candidates = []
@@ -249,10 +245,11 @@ def is_fresh(published: str, now: datetime) -> bool:
 
 def balance_by_day(articles: list[dict], now: datetime, max_keep: int) -> list[dict]:
     """
-    Enforce a 50/50 split: half from today (age_days==0), half from yesterday (age_days==1).
-    If one day is sparse the remaining slots are filled from the other.
+    Prefer a 50/50 split between today (age_days==0) and yesterday (age_days==1).
+    If both days are sparse, fill remaining slots from the rest of the
+    MAX_AGE_DAYS window (age 2..MAX_AGE_DAYS) instead of dropping them.
     """
-    today_arts, yest_arts = [], []
+    today_arts, yest_arts, older_arts = [], [], []
     for a in articles:
         try:
             age = (now - parsedate_to_datetime(a["published"])).days
@@ -262,17 +259,23 @@ def balance_by_day(articles: list[dict], now: datetime, max_keep: int) -> list[d
             today_arts.append(a)
         elif age == 1:
             yest_arts.append(a)
+        elif age <= MAX_AGE_DAYS:
+            older_arts.append(a)
 
     half = max_keep // 2
     t    = today_arts[:half]
     y    = yest_arts[:half]
     gap  = max_keep - len(t) - len(y)
-    if gap > 0:
-        if len(t) < half:
-            y = yest_arts[:len(y) + gap]
-        else:
-            t = today_arts[:len(t) + gap]
-    return t + y
+    if gap > 0 and len(y) < len(yest_arts):
+        extra = yest_arts[len(y):len(y) + gap]
+        y += extra
+        gap -= len(extra)
+    if gap > 0 and len(t) < len(today_arts):
+        extra = today_arts[len(t):len(t) + gap]
+        t += extra
+        gap -= len(extra)
+    o = older_arts[:gap] if gap > 0 else []
+    return t + y + o
 
 
 def merge_articles(existing: list[dict], new_articles: list[dict], now: datetime) -> list[dict]:
@@ -303,7 +306,7 @@ def main():
 
     print()
     print("=" * 60)
-    print("Fetching Google News  (last 3 days only)")
+    print("Fetching Google News  (last 7 days)")
     print("=" * 60)
 
     for _, row in df.iterrows():

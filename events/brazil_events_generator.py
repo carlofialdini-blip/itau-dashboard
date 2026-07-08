@@ -17,14 +17,15 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-import requests
-
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT           = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from core.net_utils import get_with_retry  # noqa: E402
+
 OUTPUT_FILE    = ROOT / "data" / "brazil_events.json"
 LOOKAHEAD_DAYS = 180
 LOOKBACK_DAYS  = 7
@@ -62,11 +63,10 @@ IBGE_TARGETS = {
 def load_ibge_releases(today: date) -> list[dict]:
     """Fetch upcoming IBGE statistical release dates from the official calendar API."""
     try:
-        r = requests.get(
+        r = get_with_retry(
             "https://servicodados.ibge.gov.br/api/v3/calendario/?tipo=pesquisa&qtd=500",
-            headers=HEADERS, timeout=15, verify=False,
+            headers=HEADERS, timeout=15,
         )
-        r.raise_for_status()
         items = r.json().get("items", [])
     except Exception as e:
         print(f"  IBGE API error: {e}")
