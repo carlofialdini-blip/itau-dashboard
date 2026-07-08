@@ -369,6 +369,45 @@ body {
 .mkt-footnote {
   font-size: 9px; color: var(--text-muted); margin-top: 6px; padding-left: 1px;
 }
+/* FX stat-only cards */
+.mkt-fx-card .mkt-card-meta { padding-bottom: 12px; }
+.mkt-fx-card .mkt-card-val  { font-size: 18px; }
+.mkt-csv-btn {
+  margin-top: 5px; align-self: flex-start;
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  padding: 2px 8px; font-size: 9px; font-weight: 600; color: var(--text-muted);
+  cursor: pointer; letter-spacing: .4px; transition: background .12s, color .12s;
+}
+.mkt-csv-btn:hover { background: var(--border); color: var(--text); }
+/* Expand button on chart cards */
+.mkt-expand-btn {
+  background: none; border: none; cursor: pointer; padding: 0 1px;
+  color: var(--text-muted); opacity: .55; line-height: 0; margin-left: auto; flex-shrink: 0;
+}
+.mkt-expand-btn:hover { opacity: 1; color: var(--accent); }
+/* Chart modal */
+.mkt-modal {
+  display: none; position: fixed; inset: 0; z-index: 900;
+  background: rgba(0,0,0,.45); align-items: center; justify-content: center;
+}
+.mkt-modal.open { display: flex; }
+.mkt-modal-box {
+  background: var(--bg); border-radius: 12px;
+  box-shadow: 0 8px 48px rgba(0,0,0,.25);
+  width: 90vw; max-width: 960px; height: 560px;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.mkt-modal-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.mkt-modal-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.mkt-modal-close {
+  background: none; border: none; cursor: pointer; font-size: 18px;
+  color: var(--text-muted); line-height: 1; padding: 0 4px;
+}
+.mkt-modal-close:hover { color: var(--text); }
+.mkt-modal-chart { flex: 1; min-height: 0; }
 
 /* ── TOAST ── */
 .toast {
@@ -449,22 +488,38 @@ body {
       <div class="mkt-grid" style="grid-template-columns:repeat({{ keys|length }},1fr)">
         {% for key in keys %}
         {% set item = cockpit[key] %}
+        {% if item.show_chart %}
         <div class="mkt-card">
           <div class="mkt-card-meta">
             <span class="mkt-card-name">{{ item.label }}</span>
             <div class="mkt-card-val">
               {{ item.current_fmt }}
               {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
+              <button class="mkt-expand-btn" onclick="openMktModal('{{ key }}')" title="Expand chart">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+              </button>
             </div>
           </div>
           <div class="mkt-card-chart" id="mkt-{{ key }}"></div>
         </div>
+        {% else %}
+        <div class="mkt-card mkt-fx-card">
+          <div class="mkt-card-meta">
+            <span class="mkt-card-name">{{ item.label }}</span>
+            <div class="mkt-card-val">
+              {{ item.current_fmt }}
+              {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
+            </div>
+            <button class="mkt-csv-btn" onclick="downloadCockpitCSV('{{ key }}')" title="Download historical series as CSV">&#8595; CSV</button>
+          </div>
+        </div>
+        {% endif %}
         {% endfor %}
       </div>
     </div>
     {% endfor %}
 
-    <div class="mkt-footnote">* PIX BHKP / NBSK: FOEX subscription required for exact index. Showing World Bank wood pulp proxy (PWOODPULP) where available.</div>
+    <div class="mkt-footnote">* Suzano (SUZB3.SA) and Klabin (KLBN11.SA) used as Brazilian pulp &amp; paper proxies for BHKP / NBSK benchmarks.</div>
   </div>
 
   <div class="tab-nav">
@@ -766,6 +821,16 @@ body {
 
 </div><!-- /creditPage -->
 
+<!-- Chart expand modal -->
+<div class="mkt-modal" id="mktModal" onclick="closeMktModal(event)">
+  <div class="mkt-modal-box" onclick="event.stopPropagation()">
+    <div class="mkt-modal-hdr">
+      <span class="mkt-modal-title" id="mktModalTitle"></span>
+      <button class="mkt-modal-close" onclick="closeMktModal()">&#x2715;</button>
+    </div>
+    <div class="mkt-modal-chart" id="mktModalChart"></div>
+  </div>
+</div>
 
 <footer class="footer">
   <span>Portfolio Intelligence · Charts via <a href="https://chinadata.live" target="_blank">chinadata.live</a></span>
@@ -1177,6 +1242,21 @@ function buildCatalog() {
 
 // ── Cockpit market charts ─────────────────────────────────────────────────────
 (function () {
+  function _csvDownload(d, filename) {
+    const rows = ['Date,Value'];
+    (d.data || []).forEach(p => rows.push(p.x + ',' + p.y));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([rows.join('\n')], {type: 'text/csv'}));
+    a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  }
+
+  window.downloadCockpitCSV = function(key) {
+    const d = COCKPIT_DATA[key];
+    if (d) _csvDownload(d, (d.label || key).replace(/[\s\/\*]/g, '-') + '.csv');
+  };
+
   const dlCSVBtn = {
     name: 'Download CSV',
     icon: {
@@ -1184,15 +1264,8 @@ function buildCatalog() {
       path: 'M12 16l-6-6h4V4h4v6h4l-6 6zm-8 2h16v2H4v-2z'
     },
     click(gd) {
-      const t = gd.data[0];
-      const rows = ['Date,Value'];
-      (t.x || []).forEach((x, i) => rows.push(x + ',' + t.y[i]));
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([rows.join('\n')], {type: 'text/csv'}));
-      a.download = ((gd.layout.title || {}).text || 'data').replace(/[\s\/\*]/g, '-') + '.csv';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+      const d = COCKPIT_DATA[gd.dataset.ckKey];
+      if (d) _csvDownload(d, (gd.dataset.ckLabel || 'data').replace(/[\s\/\*]/g, '-') + '.csv');
     }
   };
 
@@ -1204,44 +1277,65 @@ function buildCatalog() {
     modeBarButtonsToAdd: [dlCSVBtn]
   };
 
-  function mkLayout(d) {
+  function mkLayout(d, compact) {
     return {
-      margin: {t: 4, r: 6, b: 22, l: 44},
+      margin: compact ? {t: 2, r: 6, b: 22, l: 44} : {t: 12, r: 20, b: 40, l: 58},
       paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
       showlegend: false,
       xaxis: {
         showgrid: false, zeroline: false, showline: false,
-        tickfont: {size: 8, color: '#94a3b8'},
-        tickformat: '%b %y', nticks: 5
+        tickfont: {size: compact ? 8 : 11, color: '#94a3b8'},
+        tickformat: '%b %y', nticks: compact ? 5 : 8
       },
       yaxis: {
         showgrid: true, gridcolor: '#f1f5f9',
         zeroline: false, showline: false,
-        tickfont: {size: 8, color: '#94a3b8'},
+        tickfont: {size: compact ? 8 : 11, color: '#94a3b8'},
         tickformat: d.unit === 'pts' ? ',.0f' : '.2f'
-      },
-      title: {text: d.label, font: {size: 0}}   // hidden — used only for CSV filename
+      }
     };
   }
 
-  Object.entries(COCKPIT_DATA).forEach(([key, d]) => {
-    const el = document.getElementById('mkt-' + key);
-    if (!el) return;
-    if (!d.data || d.data.length === 0) {
-      el.innerHTML = '<div class="mkt-no-data">Data unavailable</div>';
-      return;
-    }
-    const xs = d.data.map(p => p.x);
-    const ys = d.data.map(p => p.y);
-    const trace = {
-      x: xs, y: ys,
+  function mkTrace(d) {
+    return {
+      x: d.data.map(p => p.x), y: d.data.map(p => p.y),
       type: 'scatter', mode: 'lines',
       line: {color: d.color, width: 1.5, shape: 'spline', smoothing: 0.4},
       fill: 'tozeroy', fillcolor: d.color + '18',
       hovertemplate: '<b>%{y:.2f}</b> ' + d.unit + '<br>%{x}<extra></extra>'
     };
-    Plotly.newPlot(el, [trace], mkLayout(d), BASE_CFG);
+  }
+
+  // Render compact charts on cards — skip FX stat cards
+  Object.entries(COCKPIT_DATA).forEach(([key, d]) => {
+    if (!d.show_chart) return;
+    const el = document.getElementById('mkt-' + key);
+    if (!el) return;
+    if (!d.data || d.data.length === 0) {
+      el.innerHTML = '<div class="mkt-no-data">Data unavailable</div>'; return;
+    }
+    el.dataset.ckKey   = key;
+    el.dataset.ckLabel = d.label;
+    Plotly.newPlot(el, [mkTrace(d)], mkLayout(d, true), BASE_CFG);
   });
+
+  // Modal zoom — open
+  window.openMktModal = function(key) {
+    const d = COCKPIT_DATA[key];
+    if (!d || !d.data || !d.data.length) return;
+    document.getElementById('mktModalTitle').textContent = d.label;
+    const box = document.getElementById('mktModalChart');
+    box.innerHTML = '';
+    Plotly.newPlot(box, [mkTrace(d)], mkLayout(d, false),
+      Object.assign({}, BASE_CFG, {displayModeBar: false}));
+    document.getElementById('mktModal').classList.add('open');
+  };
+
+  // Modal zoom — close (click X or click backdrop)
+  window.closeMktModal = function(e) {
+    if (e instanceof MouseEvent && e.target !== document.getElementById('mktModal')) return;
+    document.getElementById('mktModal').classList.remove('open');
+  };
 })();
 
 // ── Live relative-time ticker ─────────────────────────────────────────────────

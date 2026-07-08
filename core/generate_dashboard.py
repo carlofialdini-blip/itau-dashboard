@@ -615,16 +615,16 @@ COCKPIT_GROUPS = [
     ("Equities",       ["sp500",   "ibov"]),
     ("Interest Rates", ["us10y",   "br10y"]),
     ("Exchange Rates", ["brl_usd", "usd_cny", "brl_cny", "brl_eur"]),
-    ("Commodities",    ["brent",   "iron_ore", "pix_bhkp", "pix_nbsk"]),
+    ("Commodities",    ["brent",   "iron_ore", "suzano",  "klabin"]),
 ]
 
 
-def _ck_make(label, unit, color, series):
+def _ck_make(label, unit, color, series, show_chart=True):
     """Build a cockpit item dict with pre-formatted current value and change."""
     cur  = series[-1]["y"] if series else None
     prev = series[-2]["y"] if len(series) >= 2 else None
     if cur is None:
-        return {"label": label, "unit": unit, "color": color,
+        return {"label": label, "unit": unit, "color": color, "show_chart": show_chart,
                 "current_fmt": "N/A", "change_fmt": "", "change_dir": "", "data": []}
     if unit == "pts":
         cur_fmt = f"{cur:,.0f}"
@@ -642,7 +642,7 @@ def _ck_make(label, unit, color, series):
         chg_dir = "pos" if cur >= prev else "neg"
     else:
         chg_fmt, chg_dir = "", ""
-    return {"label": label, "unit": unit, "color": color,
+    return {"label": label, "unit": unit, "color": color, "show_chart": show_chart,
             "current_fmt": cur_fmt, "change_fmt": chg_fmt,
             "change_dir": chg_dir, "data": series}
 
@@ -726,17 +726,17 @@ def fetch_cockpit_data():
     data = {}
 
     yf_map = [
-        ("sp500",   "^GSPC",    "S&P 500",          "pts",    "#3b82f6"),
-        ("ibov",    "^BVSP",    "IBOVESPA",          "pts",    "#16a34a"),
-        ("us10y",   "^TNX",     "US 10Y Treasury",   "%",      "#ef4444"),
-        ("brl_usd", "USDBRL=X", "BRL / USD",         "BRL",    "#8b5cf6"),
-        ("usd_cny", "USDCNY=X", "USD / CNY",         "CNY",    "#f59e0b"),
-        ("brl_eur", "EURBRL=X", "EUR / BRL",         "BRL",    "#0284c7"),
-        ("brent",   "BZ=F",     "Brent Crude",       "USD/bbl","#1e293b"),
+        ("sp500",   "^GSPC",    "S&P 500",          "pts",     "#3b82f6", True),
+        ("ibov",    "^BVSP",    "IBOVESPA",          "pts",     "#16a34a", True),
+        ("us10y",   "^TNX",     "US 10Y Treasury",   "%",       "#ef4444", True),
+        ("brl_usd", "USDBRL=X", "BRL / USD",         "BRL",     "#8b5cf6", False),
+        ("usd_cny", "USDCNY=X", "USD / CNY",         "CNY",     "#f59e0b", False),
+        ("brl_eur", "EURBRL=X", "EUR / BRL",         "BRL",     "#0284c7", False),
+        ("brent",   "BZ=F",     "Brent Crude",       "USD/bbl", "#1e293b", True),
     ]
-    for key, ticker, label, unit, color in yf_map:
+    for key, ticker, label, unit, color, show_chart in yf_map:
         print(f"    {label}...")
-        data[key] = _ck_make(label, unit, color, _ck_yf(ticker))
+        data[key] = _ck_make(label, unit, color, _ck_yf(ticker), show_chart=show_chart)
         _time.sleep(0.3)
 
     # BRL/CNY: direct ticker, then compute from USDBRL + USDCNY as fallback
@@ -748,7 +748,7 @@ def fetch_cockpit_data():
         brlcny = [{"x": d, "y": round(cny_s[d] / brl_s[d], 4)}
                   for d in sorted(set(brl_s) & set(cny_s))
                   if brl_s[d] and brl_s[d] != 0]
-    data["brl_cny"] = _ck_make("BRL / CNY", "CNY", "#06b6d4", brlcny)
+    data["brl_cny"] = _ck_make("BRL / CNY", "CNY", "#06b6d4", brlcny, show_chart=False)
 
     # Brazil ~10Y via BCB
     print("    Brazil 10Y (BCB)...")
@@ -761,11 +761,12 @@ def fetch_cockpit_data():
         iron = _ck_fred("PIORECRUSD", max_pts=52)
     data["iron_ore"] = _ck_make("Iron Ore 62% Fe", "USD/t", "#92400e", iron)
 
-    # PIX pulp proxies via FRED (WPU0912 = PPI Pulp, Paper & Allied Products)
-    print("    PIX BHKP / NBSK (FRED proxy)...")
-    pulp = _ck_fred("WPU0912", max_pts=52)
-    data["pix_bhkp"] = _ck_make("PIX BHKP Short Fibre *", "index", "#059669", pulp)
-    data["pix_nbsk"] = _ck_make("PIX NBSK Long Fibre *",  "index", "#0d9488", pulp)
+    # Pulp & paper proxies: Suzano (BHKP short fibre) and Klabin (NBSK long fibre) — B3-listed
+    print("    Suzano SUZB3.SA (BHKP proxy)...")
+    data["suzano"] = _ck_make("Suzano (BHKP proxy)", "BRL", "#059669", _ck_yf("SUZB3.SA"))
+    _time.sleep(0.3)
+    print("    Klabin KLBN11.SA (NBSK proxy)...")
+    data["klabin"]  = _ck_make("Klabin (NBSK proxy)",  "BRL", "#0d9488", _ck_yf("KLBN11.SA"))
 
     return data
 
