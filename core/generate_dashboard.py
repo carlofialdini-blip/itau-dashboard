@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import sys
@@ -28,6 +29,15 @@ CREDIT_NEWS_FILE   = ROOT / "data" / "credit_news_cache.json"
 OUTPUT_HTML        = ROOT / "dashboard.html"
 TEMPLATE_FOLDER    = str(ROOT / "templates")
 TEMPLATE_FILE      = "dashboard_template.html"
+LOGO_FILE          = ROOT / "assets" / "itau_logo.png"
+
+
+def _logo_data_uri() -> str:
+    """Embed the logo inline so dashboard.html stays a single self-contained file."""
+    if not LOGO_FILE.exists():
+        return ""
+    b64 = base64.b64encode(LOGO_FILE.read_bytes()).decode("ascii")
+    return f"data:image/png;base64,{b64}"
 
 # ── China datasets shown on the Economic Data tab ───────────────────────────
 # Each entry drives one chart card; data is fetched live by the browser.
@@ -619,7 +629,7 @@ def fetch_credit_charts() -> dict:
 # ── Cockpit market data ───────────────────────────────────────────────────────
 COCKPIT_GROUPS = [
     ("Equities",       ["sp500",   "ibov"]),
-    ("Interest Rates", ["us10y",   "br10y"]),
+    ("Interest Rates", ["us10y",   "br_selic"]),
     ("Exchange Rates", ["brl_usd", "usd_cny", "brl_cny", "brl_eur"]),
     ("Commodities",    ["brent",   "iron_ore", "suzano",  "klabin"]),
 ]
@@ -700,15 +710,22 @@ def _ck_fred(series_id, max_pts=60):
         return []
 
 
-def _ck_br10y():
-    """BCB OLINDA series 12511 — ETTJ B-type ~10Y (IPCA-linked yield curve)."""
+def _ck_br_selic():
+    """BCB OLINDA series 432 — Meta Selic (policy rate). Reliable and well-known.
+
+    Series 12511 (ETTJ ~10Y real yield curve) was tried here previously but
+    returns 502/timeout directly from BCB's own infrastructure regardless of
+    retries or query shape — confirmed bad on their end, not a network issue.
+    Selic is the most-watched Brazilian rate and keeps this cockpit slot
+    reliably populated instead of showing N/A.
+    """
     today_ = date.today()
     start  = (today_ - timedelta(days=400)).strftime("%d/%m/%Y")
     end_   = today_.strftime("%d/%m/%Y")
-    url    = (f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.12511/dados"
+    url    = (f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados"
               f"?formato=json&dataInicial={start}&dataFinal={end_}")
     try:
-        r = get_with_retry(url, headers=BCB_HDR, timeout=40)
+        r = get_with_retry(url, headers=BCB_HDR, timeout=20)
         pts = []
         for pt in r.json():
             try:
@@ -719,7 +736,7 @@ def _ck_br10y():
                 pass
         return pts
     except Exception as e:
-        print(f"    BCB 12511: {e}")
+        print(f"    BCB 432 (Selic): {e}")
         return []
 
 
@@ -754,9 +771,9 @@ def fetch_cockpit_data():
                   if brl_s[d] and brl_s[d] != 0]
     data["brl_cny"] = _ck_make("BRL / CNY", "CNY", "#06b6d4", brlcny, show_chart=False)
 
-    # Brazil ~10Y via BCB
-    print("    Brazil 10Y (BCB)...")
-    data["br10y"] = _ck_make("Brazil 10Y (B-type)", "%", "#d97706", _ck_br10y())
+    # Brazil Selic policy rate via BCB
+    print("    Brazil Selic Rate (BCB)...")
+    data["br_selic"] = _ck_make("Brazil Selic Rate", "%", "#d97706", _ck_br_selic())
 
     # Iron ore: yfinance TIO=F, then FRED PIORECRUSD as fallback
     print("    Iron Ore...")
@@ -823,6 +840,7 @@ def render(rows, companies, sectors, providers, events, event_months,
         num_credit_datasets=len(CREDIT_DATASETS),
         credit_charts_json=json.dumps(credit_charts),
         generated=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        logo_data_uri=_logo_data_uri(),
     )
     with open(OUTPUT_HTML, "w", encoding="utf-8") as f:
         f.write(html)

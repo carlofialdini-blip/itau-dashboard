@@ -53,7 +53,9 @@ body {
   display: flex; align-items: center; padding: 0 24px; gap: 0;
 }
 .hdr-brand { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-.hdr-mark  { width: 30px; height: 30px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.hdr-mark  { width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; object-fit: cover; }
+img.hdr-mark { background: var(--bg); border: 1px solid var(--border); }
+div.hdr-mark { background: var(--accent); }
 .hdr-name  { font-size: 15px; font-weight: 700; letter-spacing: -0.4px; color: var(--text); }
 .hdr-sub   { font-size: 10px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.2px; margin-top: 1px; }
 
@@ -227,32 +229,56 @@ body {
 .ev-bar        { background: var(--ec, #64748b); }
 .ev-type-badge { color: var(--ec,#64748b); background: color-mix(in srgb,var(--ec,#64748b) 10%,transparent); border-color: color-mix(in srgb,var(--ec,#64748b) 30%,transparent); }
 
-/* ── CHINA CHARTS ── */
-.chart-section-header {
-  padding: 9px 24px 7px; font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
-  color: var(--text-muted); text-transform: uppercase;
-  background: var(--bg-2); border-bottom: 1px solid var(--border);
-  border-left: 3px solid var(--cn-red);
-}
+/* ── ECONOMIC DATA CHARTS (China / Brazil / Credit) ── */
 .chart-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
   gap: 1px; background: var(--border); border-bottom: 1px solid var(--border);
 }
-.chart-card { background: var(--bg); padding: 16px 20px; }
-.chart-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.chart-card { background: var(--bg); padding: 16px 20px 16px 17px; border-left: 3px solid var(--border-2); }
+.chart-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 10px; }
 .chart-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.chart-sector-tag { font-size: 9px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
 .chart-unit  { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
-.btn-dl {
-  font-size: 10px; font-weight: 600; color: var(--text-muted); text-decoration: none;
-  padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border-2);
-  white-space: nowrap; transition: all .1s;
-}
-.btn-dl:hover { color: var(--text); border-color: var(--text-muted); }
 .chart-plot   { height: 220px; width: 100%; }
 .chart-status { height: 220px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 12px; gap: 8px; }
 .chart-status.hidden { display: none; }
 .chart-error  { color: var(--cn-red) !important; }
 .chart-footer { font-size: 10px; color: var(--text-muted); margin-top: 6px; }
+
+/* ── Shared chart action buttons (PNG / CSV / Expand) — same everywhere ── */
+.chart-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.chart-icon-btn, .chart-icon-link {
+  background: none; border: 1px solid var(--border-2); border-radius: 4px;
+  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); cursor: pointer; padding: 0; transition: all .12s; text-decoration: none;
+}
+.chart-icon-btn:hover, .chart-icon-link:hover { color: var(--text); border-color: var(--text-muted); background: var(--bg-2); }
+.chart-icon-btn svg, .chart-icon-link svg { width: 12px; height: 12px; }
+
+/* ── Shared chart modal (expand view) — used by every page ── */
+.chart-modal {
+  display: none; position: fixed; inset: 0; z-index: 900;
+  background: rgba(0,0,0,.45); align-items: center; justify-content: center;
+}
+.chart-modal.open { display: flex; }
+.chart-modal-box {
+  background: var(--bg); border-radius: 12px;
+  box-shadow: 0 8px 48px rgba(0,0,0,.25);
+  width: 90vw; max-width: 980px; height: 580px;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.chart-modal-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.chart-modal-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.chart-modal-actions { display: flex; align-items: center; gap: 8px; }
+.chart-modal-close {
+  background: none; border: none; cursor: pointer; font-size: 18px;
+  color: var(--text-muted); line-height: 1; padding: 0 4px;
+}
+.chart-modal-close:hover { color: var(--text); }
+.chart-modal-chart { flex: 1; min-height: 0; padding: 8px 12px 12px; }
 .spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--text-muted); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -346,6 +372,7 @@ body {
   padding: 9px 11px 5px;
   display: flex; flex-direction: column; gap: 2px;
 }
+.mkt-card-hdr { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .mkt-card-name {
   font-size: 9px; font-weight: 700; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: .6px;
@@ -378,35 +405,7 @@ body {
   cursor: pointer; letter-spacing: .4px; transition: background .12s, color .12s;
 }
 .mkt-csv-btn:hover { background: var(--border); color: var(--text); }
-/* Expand button on chart cards */
-.mkt-expand-btn {
-  background: none; border: none; cursor: pointer; padding: 0 1px;
-  color: var(--text-muted); opacity: .55; line-height: 0; margin-left: auto; flex-shrink: 0;
-}
-.mkt-expand-btn:hover { opacity: 1; color: var(--accent); }
-/* Chart modal */
-.mkt-modal {
-  display: none; position: fixed; inset: 0; z-index: 900;
-  background: rgba(0,0,0,.45); align-items: center; justify-content: center;
-}
-.mkt-modal.open { display: flex; }
-.mkt-modal-box {
-  background: var(--bg); border-radius: 12px;
-  box-shadow: 0 8px 48px rgba(0,0,0,.25);
-  width: 90vw; max-width: 960px; height: 560px;
-  display: flex; flex-direction: column; overflow: hidden;
-}
-.mkt-modal-hdr {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 18px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0;
-}
-.mkt-modal-title { font-size: 13px; font-weight: 700; color: var(--text); }
-.mkt-modal-close {
-  background: none; border: none; cursor: pointer; font-size: 18px;
-  color: var(--text-muted); line-height: 1; padding: 0 4px;
-}
-.mkt-modal-close:hover { color: var(--text); }
-.mkt-modal-chart { flex: 1; min-height: 0; }
+.mkt-card-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; flex-shrink: 0; }
 
 /* ── TOAST ── */
 .toast {
@@ -440,15 +439,22 @@ body {
 </style>
 </head>
 <body>
+{% set ICON_CSV %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>{% endset %}
+{% set ICON_PNG %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.4" fill="currentColor" stroke="none"/><path d="M21 15l-5-5-4 4-3-3-6 6"/></svg>{% endset %}
+{% set ICON_EXPAND %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>{% endset %}
 
 <!-- ══ HEADER ══ -->
 <header class="hdr">
   <div class="hdr-brand">
+    {% if logo_data_uri %}
+    <img class="hdr-mark" src="{{ logo_data_uri }}" alt="Itaú">
+    {% else %}
     <div class="hdr-mark">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="#fff">
         <path d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z"/>
       </svg>
     </div>
+    {% endif %}
     <div>
       <div class="hdr-name">Portfolio Intelligence</div>
       <div class="hdr-sub">Market Monitor</div>
@@ -496,13 +502,16 @@ body {
         {% if item.show_chart %}
         <div class="mkt-card">
           <div class="mkt-card-meta">
-            <span class="mkt-card-name">{{ item.label }}</span>
+            <div class="mkt-card-hdr">
+              <span class="mkt-card-name">{{ item.label }}</span>
+              <div class="mkt-card-actions">
+                <button class="chart-icon-btn" onclick="downloadCockpitCSV('{{ key }}')" title="Download CSV">{{ ICON_CSV }}</button>
+                <button class="chart-icon-btn" onclick="chartExpand('mkt-{{ key }}', '{{ item.label|replace("'", "\\'") }}', function(){ downloadCockpitCSV('{{ key }}'); })" title="Expand chart">{{ ICON_EXPAND }}</button>
+              </div>
+            </div>
             <div class="mkt-card-val">
               {{ item.current_fmt }}
               {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
-              <button class="mkt-expand-btn" onclick="openMktModal('{{ key }}')" title="Expand chart">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-              </button>
             </div>
           </div>
           <div class="mkt-card-chart" id="mkt-{{ key }}"></div>
@@ -820,14 +829,18 @@ body {
 
 </div><!-- /creditPage -->
 
-<!-- Chart expand modal -->
-<div class="mkt-modal" id="mktModal" onclick="closeMktModal(event)">
-  <div class="mkt-modal-box" onclick="event.stopPropagation()">
-    <div class="mkt-modal-hdr">
-      <span class="mkt-modal-title" id="mktModalTitle"></span>
-      <button class="mkt-modal-close" onclick="closeMktModal()">&#x2715;</button>
+<!-- Shared chart expand modal — used by every chart on every page -->
+<div class="chart-modal" id="chartModal" onclick="chartModalClose(event)">
+  <div class="chart-modal-box" onclick="event.stopPropagation()">
+    <div class="chart-modal-hdr">
+      <span class="chart-modal-title" id="chartModalTitle"></span>
+      <div class="chart-modal-actions">
+        <button class="chart-icon-btn" onclick="chartModalDownloadPng()" title="Download PNG">{{ ICON_PNG }}</button>
+        <button class="chart-icon-btn" id="chartModalCsvBtn" onclick="chartModalDownloadCsv()" title="Download CSV">{{ ICON_CSV }}</button>
+        <button class="chart-modal-close" onclick="chartModalClose()" title="Close">&#x2715;</button>
+      </div>
     </div>
-    <div class="mkt-modal-chart" id="mktModalChart"></div>
+    <div class="chart-modal-chart" id="chartModalChart"></div>
   </div>
 </div>
 
@@ -988,6 +1001,11 @@ function cnTab(name) {
   cards.forEach(card => card.addEventListener('click', e => { if (e.target.tagName !== 'A') { const a = card.querySelector('a'); if (a) window.open(a.href,'_blank','noopener'); } }));
 })();
 
+// ── Shared icon SVGs for chart card action buttons ──────────────────────────
+const ICON_PNG_SVG    = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.4" fill="currentColor" stroke="none"/><path d="M21 15l-5-5-4 4-3-3-6 6"/></svg>';
+const ICON_CSV_SVG    = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>';
+const ICON_EXPAND_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+
 // ── Plotly layout (light theme) ───────────────────────────────────────────
 const LAYOUT = {
   paper_bgcolor: '#ffffff', plot_bgcolor: '#f8fafc',
@@ -1048,40 +1066,40 @@ function renderChart(ds) {
 }
 
 function _buildGrid(datasets, container, makeCardHTML) {
-  /** Build section headers + card DOM. Returns array of [ds, plotEl, statEl, unitEl, ftrEl]. */
-  const groups  = new Map();
-  datasets.forEach(ds => { if (!groups.has(ds.sector)) groups.set(ds.sector,[]); groups.get(ds.sector).push(ds); });
-  const pending = [];
-  groups.forEach((dsArr, sector) => {
-    const hdr = document.createElement('div');
-    hdr.className = 'chart-section-header';
-    hdr.style.borderLeftColor = dsArr[0].sectorColor || '#64748b';
-    hdr.textContent = sector;
-    container.appendChild(hdr);
-    const grid = document.createElement('div');
-    grid.className = 'chart-grid';
-    dsArr.forEach(ds => {
-      const card = document.createElement('div');
-      card.className = 'chart-card';
-      card.innerHTML = makeCardHTML(ds);
-      grid.appendChild(card);
-      pending.push(ds);
-    });
-    container.appendChild(grid);
+  /** Build one flat card grid (no per-sector section breaks — those left
+   *  empty trailing slots whenever a sector's item count didn't fill a row).
+   *  Sector is still shown per-card via a colored left border + small tag. */
+  const grid = document.createElement('div');
+  grid.className = 'chart-grid';
+  datasets.forEach(ds => {
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.style.borderLeftColor = ds.sectorColor || 'var(--border-2)';
+    card.innerHTML = makeCardHTML(ds);
+    grid.appendChild(card);
   });
-  return pending;
+  container.appendChild(grid);
+  return datasets;
 }
 
 function buildCharts() {
   const container = document.getElementById('cnCharts');
-  const pending   = _buildGrid(CHINA_DATASETS, container, ds => `
+  const pending   = _buildGrid(CHINA_DATASETS, container, ds => {
+    const csv   = `https://chinadata.live/api/v2/data/${ds.id}?format=csv`;
+    const title = ds.title.replace(/'/g, "\\'");
+    return `
     <div class="chart-card-header">
-      <div><div class="chart-title">${ds.title}</div><div class="chart-unit" id="unit-${ds.id}"></div></div>
-      <a href="https://chinadata.live/api/v2/data/${ds.id}?format=csv" class="btn-dl" download>↓ CSV</a>
+      <div><div class="chart-title">${ds.title}</div><div class="chart-sector-tag">${ds.sector}</div><div class="chart-unit" id="unit-${ds.id}"></div></div>
+      <div class="chart-actions">
+        <button class="chart-icon-btn" onclick="chartDownloadPng('plot-${ds.id}','${title}')" title="Download PNG">${ICON_PNG_SVG}</button>
+        <a class="chart-icon-link" href="${csv}" download title="Download CSV">${ICON_CSV_SVG}</a>
+        <button class="chart-icon-btn" onclick="chartExpand('plot-${ds.id}','${title}','${csv}')" title="Expand">${ICON_EXPAND_SVG}</button>
+      </div>
     </div>
     <div class="chart-status" id="stat-${ds.id}"><div class="spinner"></div> Loading…</div>
     <div class="chart-plot"   id="plot-${ds.id}"></div>
-    <div class="chart-footer" id="ftr-${ds.id}"></div>`);
+    <div class="chart-footer" id="ftr-${ds.id}"></div>`;
+  });
   // Yield to browser so newly added elements get layout, then render
   requestAnimationFrame(() => pending.forEach(ds => renderChart(ds)));
 }
@@ -1114,11 +1132,16 @@ function buildCharts() {
 function buildCrCharts() {
   const container = document.getElementById('crCharts');
   const pending   = _buildGrid(CREDIT_DATASETS, container, ds => {
-    const csv = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${ds.bcb_series}/dados?formato=csv`;
+    const csv   = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${ds.bcb_series}/dados?formato=csv`;
+    const title = ds.title.replace(/'/g, "\\'");
     return `
       <div class="chart-card-header">
-        <div><div class="chart-title">${ds.title}</div><div class="chart-unit" id="cr-unit-${ds.id}"></div></div>
-        <a href="${csv}" class="btn-dl" download>↓ CSV</a>
+        <div><div class="chart-title">${ds.title}</div><div class="chart-sector-tag">${ds.sector}</div><div class="chart-unit" id="cr-unit-${ds.id}"></div></div>
+        <div class="chart-actions">
+          <button class="chart-icon-btn" onclick="chartDownloadPng('cr-plot-${ds.id}','${title}')" title="Download PNG">${ICON_PNG_SVG}</button>
+          <a class="chart-icon-link" href="${csv}" download title="Download CSV">${ICON_CSV_SVG}</a>
+          <button class="chart-icon-btn" onclick="chartExpand('cr-plot-${ds.id}','${title}','${csv}')" title="Expand">${ICON_EXPAND_SVG}</button>
+        </div>
       </div>
       <div class="chart-status" id="cr-stat-${ds.id}"><div class="spinner"></div> Loading…</div>
       <div class="chart-plot"   id="cr-plot-${ds.id}"></div>
@@ -1169,11 +1192,16 @@ function buildCrCharts() {
 function buildBrCharts() {
   const container = document.getElementById('brCharts');
   const pending   = _buildGrid(BRAZIL_DATASETS, container, ds => {
-    const csv = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${ds.bcb_series}/dados?formato=csv`;
+    const csv   = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${ds.bcb_series}/dados?formato=csv`;
+    const title = ds.title.replace(/'/g, "\\'");
     return `
       <div class="chart-card-header">
-        <div><div class="chart-title">${ds.title}</div><div class="chart-unit" id="br-unit-${ds.id}"></div></div>
-        <a href="${csv}" class="btn-dl" download>↓ CSV</a>
+        <div><div class="chart-title">${ds.title}</div><div class="chart-sector-tag">${ds.sector}</div><div class="chart-unit" id="br-unit-${ds.id}"></div></div>
+        <div class="chart-actions">
+          <button class="chart-icon-btn" onclick="chartDownloadPng('br-plot-${ds.id}','${title}')" title="Download PNG">${ICON_PNG_SVG}</button>
+          <a class="chart-icon-link" href="${csv}" download title="Download CSV">${ICON_CSV_SVG}</a>
+          <button class="chart-icon-btn" onclick="chartExpand('br-plot-${ds.id}','${title}','${csv}')" title="Expand">${ICON_EXPAND_SVG}</button>
+        </div>
       </div>
       <div class="chart-status" id="br-stat-${ds.id}"><div class="spinner"></div> Loading…</div>
       <div class="chart-plot"   id="br-plot-${ds.id}"></div>
@@ -1239,6 +1267,56 @@ function buildCatalog() {
   render();
 }
 
+// ── Shared chart utilities (modal, PNG/CSV export) — used by every page ────────
+// One interaction model everywhere: charts render clean with no floating
+// Plotly modebar; each card carries its own small icon buttons instead, and
+// "expand" always opens this same modal.
+const STANDARD_PLOTLY_CFG = { responsive: true, displayModeBar: false };
+
+window.chartDownloadPng = function(plotElId, filename) {
+  const el = document.getElementById(plotElId);
+  if (!el || !el.data) return;
+  Plotly.downloadImage(el, { format: 'png', filename: (filename || 'chart').replace(/[\s\/\*]/g, '-'), width: 1200, height: 700 });
+};
+
+window.chartExpand = function(plotElId, title, csv) {
+  const src = document.getElementById(plotElId);
+  if (!src || !src.data) return;
+  document.getElementById('chartModalTitle').textContent = title;
+  window._chartModalCsv = csv || null;
+  document.getElementById('chartModalCsvBtn').style.display = csv ? '' : 'none';
+  document.getElementById('chartModal').classList.add('open');
+  // Modal must be visible (not display:none) before Plotly measures the
+  // container, otherwise it renders at zero/stale width — hence show first,
+  // then wait two frames for layout to settle before plotting.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const box = document.getElementById('chartModalChart');
+    box.innerHTML = '';
+    const layout = JSON.parse(JSON.stringify(src.layout));
+    layout.margin = { t: 16, r: 28, b: 46, l: 66 };
+    layout.font = Object.assign({}, layout.font, { size: 11 });
+    Plotly.newPlot(box, src.data, layout, STANDARD_PLOTLY_CFG);
+  }));
+};
+
+window.chartModalDownloadPng = function() {
+  const box = document.getElementById('chartModalChart');
+  if (!box || !box.data) return;
+  const title = document.getElementById('chartModalTitle').textContent || 'chart';
+  Plotly.downloadImage(box, { format: 'png', filename: title.replace(/[\s\/\*]/g, '-'), width: 1400, height: 800 });
+};
+
+window.chartModalDownloadCsv = function() {
+  const csv = window._chartModalCsv;
+  if (!csv) return;
+  if (typeof csv === 'function') csv(); else window.open(csv, '_blank');
+};
+
+window.chartModalClose = function(e) {
+  if (e instanceof MouseEvent && e.target !== document.getElementById('chartModal')) return;
+  document.getElementById('chartModal').classList.remove('open');
+};
+
 // ── Cockpit market charts ─────────────────────────────────────────────────────
 (function () {
   function _csvDownload(d, filename) {
@@ -1256,40 +1334,20 @@ function buildCatalog() {
     if (d) _csvDownload(d, (d.label || key).replace(/[\s\/\*]/g, '-') + '.csv');
   };
 
-  const dlCSVBtn = {
-    name: 'Download CSV',
-    icon: {
-      width: 24, height: 24, ascent: 24, descent: 0,
-      path: 'M12 16l-6-6h4V4h4v6h4l-6 6zm-8 2h16v2H4v-2z'
-    },
-    click(gd) {
-      const d = COCKPIT_DATA[gd.dataset.ckKey];
-      if (d) _csvDownload(d, (gd.dataset.ckLabel || 'data').replace(/[\s\/\*]/g, '-') + '.csv');
-    }
-  };
-
-  const BASE_CFG = {
-    responsive: true, displayModeBar: true, displaylogo: false,
-    modeBarButtonsToRemove: ['select2d','lasso2d','zoomIn2d','zoomOut2d',
-      'autoScale2d','toggleSpikelines','hoverClosestCartesian',
-      'hoverCompareCartesian','zoom2d','pan2d','resetScale2d'],
-    modeBarButtonsToAdd: [dlCSVBtn]
-  };
-
-  function mkLayout(d, compact) {
+  function mkLayout(d) {
     return {
-      margin: compact ? {t: 2, r: 6, b: 22, l: 44} : {t: 12, r: 20, b: 40, l: 58},
+      margin: {t: 2, r: 6, b: 22, l: 44},
       paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
       showlegend: false,
       xaxis: {
         showgrid: false, zeroline: false, showline: false,
-        tickfont: {size: compact ? 8 : 11, color: '#94a3b8'},
-        tickformat: '%b %y', nticks: compact ? 5 : 8
+        tickfont: {size: 8, color: '#94a3b8'},
+        tickformat: '%b %y', nticks: 5
       },
       yaxis: {
         showgrid: true, gridcolor: '#f1f5f9',
         zeroline: false, showline: false,
-        tickfont: {size: compact ? 8 : 11, color: '#94a3b8'},
+        tickfont: {size: 8, color: '#94a3b8'},
         tickformat: d.unit === 'pts' ? ',.0f' : '.2f'
       }
     };
@@ -1313,28 +1371,8 @@ function buildCatalog() {
     if (!d.data || d.data.length === 0) {
       el.innerHTML = '<div class="mkt-no-data">Data unavailable</div>'; return;
     }
-    el.dataset.ckKey   = key;
-    el.dataset.ckLabel = d.label;
-    Plotly.newPlot(el, [mkTrace(d)], mkLayout(d, true), BASE_CFG);
+    Plotly.newPlot(el, [mkTrace(d)], mkLayout(d), STANDARD_PLOTLY_CFG);
   });
-
-  // Modal zoom — open
-  window.openMktModal = function(key) {
-    const d = COCKPIT_DATA[key];
-    if (!d || !d.data || !d.data.length) return;
-    document.getElementById('mktModalTitle').textContent = d.label;
-    const box = document.getElementById('mktModalChart');
-    box.innerHTML = '';
-    Plotly.newPlot(box, [mkTrace(d)], mkLayout(d, false),
-      Object.assign({}, BASE_CFG, {displayModeBar: false}));
-    document.getElementById('mktModal').classList.add('open');
-  };
-
-  // Modal zoom — close (click X or click backdrop)
-  window.closeMktModal = function(e) {
-    if (e instanceof MouseEvent && e.target !== document.getElementById('mktModal')) return;
-    document.getElementById('mktModal').classList.remove('open');
-  };
 })();
 
 // ── Live relative-time ticker ─────────────────────────────────────────────────
