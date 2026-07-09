@@ -315,7 +315,6 @@ body {
 /* ── MARKET OVERVIEW ── */
 .mkt-overview {
   padding: 16px 24px 12px;
-  border-top: 2px solid var(--border);
   background: var(--bg);
 }
 .mkt-overview-hdr {
@@ -476,12 +475,60 @@ body {
 <div id="portfolioPage" class="page active">
 
   <div class="tab-nav">
-    <button class="tab-btn active" id="pfTabNews"   onclick="pfTab('news')"   style="border-bottom-color:var(--accent)">News Feed <span class="tab-badge" id="pfNewsBadge">{{ articles|length }}</span></button>
+    <button class="tab-btn active" id="pfTabMarket" onclick="pfTab('market')" style="border-bottom-color:var(--accent)">Market Data</button>
+    <button class="tab-btn"        id="pfTabNews"   onclick="pfTab('news')">News Feed <span class="tab-badge" id="pfNewsBadge">{{ articles|length }}</span></button>
     <button class="tab-btn"        id="pfTabEvents" onclick="pfTab('events')">Events Calendar <span class="tab-badge">{{ events|length }}</span></button>
   </div>
 
+  <!-- Market Data tab -->
+  <div class="tab-panel active mkt-overview" id="pfPanelMarket">
+    <div class="mkt-overview-hdr">
+      <span class="mkt-overview-title">Market Overview</span>
+      <span class="mkt-updated">{{ generated }}</span>
+    </div>
+
+    {% for group_name, keys in cockpit_groups %}
+    <div class="mkt-group">
+      <div class="mkt-group-lbl">{{ group_name }}</div>
+      <div class="mkt-grid" style="grid-template-columns:repeat({{ keys|length }},1fr)">
+        {% for key in keys %}
+        {% set item = cockpit[key] %}
+        {% if item.show_chart %}
+        <div class="mkt-card">
+          <div class="mkt-card-meta">
+            <span class="mkt-card-name">{{ item.label }}</span>
+            <div class="mkt-card-val">
+              {{ item.current_fmt }}
+              {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
+              <button class="mkt-expand-btn" onclick="openMktModal('{{ key }}')" title="Expand chart">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="mkt-card-chart" id="mkt-{{ key }}"></div>
+        </div>
+        {% else %}
+        <div class="mkt-card mkt-fx-card">
+          <div class="mkt-card-meta">
+            <span class="mkt-card-name">{{ item.label }}</span>
+            <div class="mkt-card-val">
+              {{ item.current_fmt }}
+              {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
+            </div>
+            <button class="mkt-csv-btn" onclick="downloadCockpitCSV('{{ key }}')" title="Download historical series as CSV">&#8595; CSV</button>
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="mkt-footnote">* Suzano (SUZB3.SA) and Klabin (KLBN11.SA) used as Brazilian pulp &amp; paper proxies for BHKP / NBSK benchmarks.</div>
+  </div>
+
   <!-- News tab -->
-  <div class="tab-panel active" id="pfPanelNews">
+  <div class="tab-panel" id="pfPanelNews">
     <div class="with-sidebar">
       <aside class="sidebar">
         <div class="search-wrap">
@@ -544,53 +591,6 @@ body {
     </div>
     {% endfor %}
     {% endfor %}
-  </div>
-
-  <!-- ── Market Overview ───────────────────────────────────────────────── -->
-  <div class="mkt-overview">
-    <div class="mkt-overview-hdr">
-      <span class="mkt-overview-title">Market Overview</span>
-      <span class="mkt-updated">{{ generated }}</span>
-    </div>
-
-    {% for group_name, keys in cockpit_groups %}
-    <div class="mkt-group">
-      <div class="mkt-group-lbl">{{ group_name }}</div>
-      <div class="mkt-grid" style="grid-template-columns:repeat({{ keys|length }},1fr)">
-        {% for key in keys %}
-        {% set item = cockpit[key] %}
-        {% if item.show_chart %}
-        <div class="mkt-card">
-          <div class="mkt-card-meta">
-            <span class="mkt-card-name">{{ item.label }}</span>
-            <div class="mkt-card-val">
-              {{ item.current_fmt }}
-              {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
-              <button class="mkt-expand-btn" onclick="openMktModal('{{ key }}')" title="Expand chart">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-              </button>
-            </div>
-          </div>
-          <div class="mkt-card-chart" id="mkt-{{ key }}"></div>
-        </div>
-        {% else %}
-        <div class="mkt-card mkt-fx-card">
-          <div class="mkt-card-meta">
-            <span class="mkt-card-name">{{ item.label }}</span>
-            <div class="mkt-card-val">
-              {{ item.current_fmt }}
-              {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
-            </div>
-            <button class="mkt-csv-btn" onclick="downloadCockpitCSV('{{ key }}')" title="Download historical series as CSV">&#8595; CSV</button>
-          </div>
-        </div>
-        {% endif %}
-        {% endfor %}
-      </div>
-    </div>
-    {% endfor %}
-
-    <div class="mkt-footnote">* Suzano (SUZB3.SA) and Klabin (KLBN11.SA) used as Brazilian pulp &amp; paper proxies for BHKP / NBSK benchmarks.</div>
   </div>
 
 </div><!-- /portfolioPage -->
@@ -858,7 +858,7 @@ function showPage(name) {
 
 // ── Portfolio tabs ────────────────────────────────────────────────────────
 function pfTab(name) {
-  ['News','Events'].forEach(t => {
+  ['Market','News','Events'].forEach(t => {
     document.getElementById(`pfPanel${t}`).classList.toggle('active', t.toLowerCase() === name);
     const btn = document.getElementById(`pfTab${t}`);
     btn.classList.toggle('active', t.toLowerCase() === name);
