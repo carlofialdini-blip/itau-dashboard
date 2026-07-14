@@ -645,7 +645,7 @@ def fetch_credit_charts() -> dict:
 # ── Cockpit market data ───────────────────────────────────────────────────────
 COCKPIT_GROUPS = [
     ("Equities",       ["sp500",   "ibov"]),
-    ("Interest Rates", ["us10y",   "br_selic"]),
+    ("Interest Rates", ["us10y",   "br10y"]),
     ("Exchange Rates", ["brl_usd", "usd_cny", "brl_cny", "brl_eur"]),
     ("Commodities",    ["brent",   "iron_ore", "suzano",  "klabin"]),
 ]
@@ -726,34 +726,114 @@ def _ck_fred(series_id, max_pts=60):
         return []
 
 
-def _ck_br_selic():
-    """BCB OLINDA series 432 — Meta Selic (policy rate). Reliable and well-known.
+ANBIMA_ETTJ_URL     = "https://www.anbima.com.br/informacoes/est-termo/CZ-down.asp"
+ANBIMA_HDR          = {"User-Agent": "Mozilla/5.0"}
+BR_ETTJ_HISTORY_FILE = ROOT / "data" / "br_ettj_history.json"
+TEN_YEAR_BDAYS      = 2520   # 252 business days/year * 10 — ANBIMA's vertex grid uses business days
 
-    Series 12511 (ETTJ ~10Y real yield curve) was tried here previously but
-    returns 502/timeout directly from BCB's own infrastructure regardless of
-    retries or query shape — confirmed bad on their end, not a network issue.
-    Selic is the most-watched Brazilian rate and keeps this cockpit slot
-    reliably populated instead of showing N/A.
+
+def _parse_anbima_ettj_pref(text: str, vertex_target: int = TEN_YEAR_BDAYS):
+    """Parse ANBIMA's CZ-down.asp response and return the nominal (PREFIXADOS)
+    yield, in percent, at the vertex closest to vertex_target business days.
+
+    Response is a semicolon-delimited Latin-1-ish text file: a few header
+    rows of NSS model parameters, then a vertex table:
+      Vertices;ETTJ IPCA;ETTJ PREF;Inflação Implícita
+      2.520;7,8062;14,4448;6,1579
+    Numbers use Brazilian formatting (comma decimal, dot thousands).
     """
-    today_ = date.today()
-    start  = (today_ - timedelta(days=400)).strftime("%d/%m/%Y")
-    end_   = today_.strftime("%d/%m/%Y")
-    url    = (f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados"
-              f"?formato=json&dataInicial={start}&dataFinal={end_}")
+    lines = text.strip().splitlines()
+    start = None
+    for i, line in enumerate(lines):
+        if line.startswith("Vertices;"):
+            start = i + 1
+            break
+    if start is None:
+        return None
+
+    best, best_diff = None, None
+    for line in lines[start:]:
+        parts = line.split(";")
+        if len(parts) < 3:
+            continue
+        try:
+            vertex = int(parts[0].replace(".", ""))
+            pref_str = parts[2].strip()
+            if not pref_str:
+                continue
+            pref = float(pref_str.replace(".", "").replace(",", "."))
+        except (ValueError, IndexError):
+            continue
+        diff = abs(vertex - vertex_target)
+        if best_diff is None or diff < best_diff:
+            best_diff, best = diff, pref
+    return best
+
+
+def _fetch_anbima_ettj_for_date(d: date):
+    """One day's Brazil 10Y nominal (prefixada) yield from ANBIMA's daily
+    ETTJ curve. Returns None on weekends/holidays (no curve published) or
+    once past ANBIMA's free retention window (~a few months back)."""
+    url = f"{ANBIMA_ETTJ_URL}?Dt_Ref={d.strftime('%d/%m/%Y')}"
     try:
-        r = get_with_retry(url, headers=BCB_HDR, timeout=20)
-        pts = []
-        for pt in r.json():
-            try:
-                p = pt["data"].split("/")
-                pts.append({"x": f"{p[2]}-{p[1]}-{p[0]}",
-                             "y": round(float(pt["valor"].replace(",", ".")), 4)})
-            except Exception:
-                pass
-        return pts
-    except Exception as e:
-        print(f"    BCB 432 (Selic): {e}")
-        return []
+        r = get_with_retry(url, headers=ANBIMA_HDR, timeout=15, retries=1)
+        return _parse_anbima_ettj_pref(r.text)
+    except Exception:
+        return None
+
+
+def _load_ettj_history():
+    if BR_ETTJ_HISTORY_FILE.exists():
+        try:
+            with open(BR_ETTJ_HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+
+def fetch_br10y():
+    """Brazil 10Y nominal government bond yield — real market-derived rate
+    from ANBIMA's daily ETTJ (Estrutura a Termo das Taxas de Juros) curve,
+    not the Selic policy rate and not a proxy. ANBIMA's free download only
+    serves one date per request, so a local history file is accumulated
+    across runs (same merge/append pattern the news scrapers use): backfill
+    a short window on first run, then append just the newest day going
+    forward. ANBIMA's own retention for this free endpoint is only a few
+    months, so a longer backfill wouldn't return anything anyway.
+    """
+    history   = _load_ettj_history()
+    have_dates = {p["x"] for p in history}
+    today_    = date.today()
+
+    if not history:
+        print("      backfilling Brazil ETTJ history (first run)...")
+        for offset in range(60, -1, -1):
+            d = today_ - timedelta(days=offset)
+            if d.weekday() >= 5:   # skip weekends — no curve published
+                continue
+            date_key = d.isoformat()
+            if date_key in have_dates:
+                continue
+            rate = _fetch_anbima_ettj_for_date(d)
+            if rate is not None:
+                history.append({"x": date_key, "y": rate})
+                have_dates.add(date_key)
+    else:
+        for d in (today_, today_ - timedelta(days=1)):
+            date_key = d.isoformat()
+            if date_key in have_dates:
+                continue
+            rate = _fetch_anbima_ettj_for_date(d)
+            if rate is not None:
+                history.append({"x": date_key, "y": rate})
+                have_dates.add(date_key)
+
+    history.sort(key=lambda p: p["x"])
+    history = history[-400:]
+    with open(BR_ETTJ_HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, indent=2)
+    return history
 
 
 def fetch_cockpit_data():
@@ -787,9 +867,9 @@ def fetch_cockpit_data():
                   if brl_s[d] and brl_s[d] != 0]
     data["brl_cny"] = _ck_make("BRL / CNY", "CNY", "#06b6d4", brlcny, show_chart=False)
 
-    # Brazil Selic policy rate via BCB
-    print("    Brazil Selic Rate (BCB)...")
-    data["br_selic"] = _ck_make("Brazil Selic Rate", "%", "#d97706", _ck_br_selic())
+    # Brazil 10Y nominal yield via ANBIMA ETTJ (real curve, not Selic)
+    print("    Brazil 10Y Treasury (ANBIMA ETTJ)...")
+    data["br10y"] = _ck_make("Brazil 10Y Treasury", "%", "#d97706", fetch_br10y())
 
     # Iron ore: yfinance TIO=F, then FRED PIORECRUSD as fallback
     print("    Iron Ore...")
