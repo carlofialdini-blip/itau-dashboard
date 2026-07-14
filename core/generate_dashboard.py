@@ -5,6 +5,7 @@ import sys
 from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -197,9 +198,20 @@ CREDIT_DATASETS = [
 ]
 
 
+BRASILIA_TZ = ZoneInfo("America/Sao_Paulo")
+
+
 def parse_date(date_string):
+    """Parse an RSS pubDate and convert to Brasília time for display.
+
+    Feeds publish in UTC/GMT; every displayed clock time in this app
+    (article "posted at", the header "Updated" stamp) should read in
+    Brasília local time, not the feed's raw UTC. Elapsed-time deltas and
+    day-bucketing elsewhere are unaffected — aware-datetime subtraction is
+    correct regardless of which tzinfo is attached.
+    """
     try:
-        return parsedate_to_datetime(date_string)
+        return parsedate_to_datetime(date_string).astimezone(BRASILIA_TZ)
     except Exception:
         return None
 
@@ -839,7 +851,7 @@ def render(rows, companies, sectors, providers, events, event_months,
         credit_datasets_json=json.dumps(CREDIT_DATASETS),
         num_credit_datasets=len(CREDIT_DATASETS),
         credit_charts_json=json.dumps(credit_charts),
-        generated=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        generated=datetime.now(BRASILIA_TZ).strftime("%Y-%m-%d %H:%M"),
         logo_data_uri=_logo_data_uri(),
     )
     with open(OUTPUT_HTML, "w", encoding="utf-8") as f:
