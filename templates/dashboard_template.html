@@ -29,6 +29,9 @@
   --cr-violet:  #7c3aed;
   --cr-dim:     rgba(124,58,237,0.08);
   --green:      #059669;
+  --imp-high:   #dc2626;
+  --imp-medium: #d97706;
+  --imp-low:    #94a3b8;
 }
 
 html { scroll-behavior: smooth; }
@@ -177,6 +180,13 @@ div.hdr-mark { background: var(--accent); }
 .card-badges { display: flex; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; align-items: center; }
 .badge-co  { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .4px; border: 1px solid; }
 .badge-sec { font-size: 10px; padding: 2px 7px; border-radius: 4px; background: var(--bg-3); color: var(--text-muted); border: 1px solid var(--border); }
+.badge-importance {
+  font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: .4px; border: 1px solid; margin-left: auto;
+}
+.badge-importance-high   { color: var(--imp-high);   background: color-mix(in srgb, var(--imp-high) 10%, transparent);   border-color: color-mix(in srgb, var(--imp-high) 30%, transparent); }
+.badge-importance-medium { color: var(--imp-medium); background: color-mix(in srgb, var(--imp-medium) 10%, transparent); border-color: color-mix(in srgb, var(--imp-medium) 30%, transparent); }
+.badge-importance-low    { color: var(--imp-low);    background: color-mix(in srgb, var(--imp-low) 10%, transparent);   border-color: color-mix(in srgb, var(--imp-low) 30%, transparent); }
 .news-title { font-size: 13.5px; font-weight: 600; line-height: 1.4; margin-bottom: 4px; }
 .news-title a { color: var(--text); text-decoration: none; transition: color .1s; }
 .news-card:hover .news-title a { color: var(--accent); }
@@ -567,6 +577,7 @@ div.hdr-mark { background: var(--accent); }
               <div class="card-badges">
                 <span class="badge-co" data-pf-co="{{ a.company }}">{{ a.company }}</span>
                 <span class="badge-sec">{{ a.sector }}</span>
+                <span class="badge-importance badge-importance-{{ a.importance }}">{{ a.importance }}</span>
               </div>
               <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
               <div class="card-meta"><span class="meta-src">{{ a.provider }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>
@@ -641,6 +652,7 @@ div.hdr-mark { background: var(--accent); }
             <div class="card-body">
               <div class="card-badges">
                 <span class="badge-co" style="color:{{ a.color }};background:{{ a.color }}18;border-color:{{ a.color }}40">{{ a.sector }}</span>
+                <span class="badge-importance badge-importance-{{ a.importance }}">{{ a.importance }}</span>
               </div>
               <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
               <div class="card-meta"><span class="meta-src">{{ a.source }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>
@@ -721,6 +733,7 @@ div.hdr-mark { background: var(--accent); }
             <div class="card-body">
               <div class="card-badges">
                 <span class="badge-co" style="color:{{ a.color }};background:{{ a.color }}18;border-color:{{ a.color }}40">{{ a.sector }}</span>
+                <span class="badge-importance badge-importance-{{ a.importance }}">{{ a.importance }}</span>
               </div>
               <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
               <div class="card-meta"><span class="meta-src">{{ a.source }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>
@@ -809,6 +822,7 @@ div.hdr-mark { background: var(--accent); }
             <div class="card-body">
               <div class="card-badges">
                 <span class="badge-co" style="color:{{ a.color }};background:{{ a.color }}18;border-color:{{ a.color }}40">{{ a.sector }}</span>
+                <span class="badge-importance badge-importance-{{ a.importance }}">{{ a.importance }}</span>
               </div>
               <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
               <div class="card-meta"><span class="meta-src">{{ a.source }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>

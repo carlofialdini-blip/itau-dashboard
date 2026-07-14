@@ -281,6 +281,7 @@ def flatten_news(news):
                 "published_short": dt.strftime("%b %d, %H:%M") if dt else "",
                 "datetime":        dt,
                 "elapsed":         elapsed_time(dt),
+                "importance":      article.get("importance", "low"),
             })
     now_utc = datetime.now(timezone.utc)
     rows.sort(
@@ -356,6 +357,7 @@ def load_china_news():
                 "source":          article.get("source", ""),
                 "datetime":        dt,
                 "elapsed":         elapsed_time(dt),
+                "importance":      article.get("importance", "low"),
             })
 
     now_utc = datetime.now(timezone.utc)
@@ -466,6 +468,7 @@ def load_brazil_news():
                 "source":          article.get("source", ""),
                 "datetime":        dt,
                 "elapsed":         elapsed_time(dt),
+                "importance":      article.get("importance", "low"),
             })
     now_utc = datetime.now(timezone.utc)
     rows.sort(
@@ -539,6 +542,7 @@ def load_credit_news():
                 "source":          article.get("source", ""),
                 "datetime":        dt,
                 "elapsed":         elapsed_time(dt),
+                "importance":      article.get("importance", "low"),
             })
     now_utc = datetime.now(timezone.utc)
     rows.sort(

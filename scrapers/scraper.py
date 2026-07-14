@@ -20,6 +20,7 @@ if hasattr(sys.stdout, "reconfigure"):
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from core.net_utils import get_with_retry, DEFAULT_HEADERS  # noqa: E402
+from core.scoring import importance_bucket  # noqa: E402
 
 EXCEL_FILE   = ROOT / "data" / "portfolio.xlsx"
 OUTPUT_FILE  = ROOT / "data" / "news_cache.json"
@@ -226,7 +227,8 @@ def fetch_articles(company: str, keywords: list[str]) -> tuple[list[dict], int, 
     kept = filtered[:MAX_KEEP]
 
     for a in kept:
-        del a["_score"]
+        a["importance_score"] = a.pop("_score")
+        a["importance"]       = importance_bucket(a["importance_score"])
         del a["_pub_dt"]
 
     return kept, len(candidates), len(kept)
