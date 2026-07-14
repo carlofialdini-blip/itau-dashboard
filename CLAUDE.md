@@ -153,7 +153,7 @@ Frontend: **Plotly.js** via CDN `<script>` tag in the template (not an npm depen
 - Original `Itaú.jpeg` (398KB, 3840×3840) is committed to the repo even though only the small processed `assets/itau_logo.png` is used by the build — kept intentionally as a reprocessing source, not dead weight to clean up.
 
 ### Next recommended tasks
-- See `IDEAS.md` for the full prioritized backlog. Tier 1 item #1 (importance badges) is done; item #2 (Data Freshness / Staleness Indicators) is the next-cheapest, highest-value pick — the `last_updated` timestamp each scraper already writes is currently never read anywhere.
+- See `IDEAS.md` for the full prioritized backlog. Tier 1 item #1 (importance badges) is done; item #2 (Data Freshness/Staleness) was proposed and **rejected by Carlo — no perceived value**, don't re-suggest it. Next candidates: #3 ("What's New Since Previous Update"), #4 (Analyst Notes), #5 (Macro Calendar Importance) — awaiting Carlo's pick.
 - Otherwise: wait for feedback from Carlo/his team once the dashboard is actually circulated, rather than building further ahead of confirmed need.
 
 ---
@@ -198,7 +198,7 @@ Shipped news importance badges (Low/Medium/High) on every news card across all 4
 Dashboard pipeline is stable and fully verified as of commit `1e731d9` ("Add news importance badges (Low/Medium/High) to every news card"). All 4 news feeds now carry and display importance badges; verified against real re-scraped data (not just synthetic checks) that thresholds produce a sensible spread on every page and that recency sort is untouched. Everything from prior sessions (chart UI, Brasília timestamps, Itaú logo, static-file workflow) still holds.
 
 ### Next recommended task
-`IDEAS.md` Tier 1 item #2 — Data Freshness / Staleness Indicators. The `last_updated` field every scraper/generator already writes to its cache file is currently never read by anything; surfacing it (an "as of HH:MM" per section, flagged if stale) closes a real visibility gap left by the retry/graceful-degradation work. Cheap, same shape as the work just finished (read a field that already exists, wire it through `generate_dashboard.py`, render it).
+Proposed Tier 1 item #2 (Data Freshness/Staleness Indicators) — Carlo rejected it, no perceived value. Don't re-propose. Waiting on his pick among #3 ("What's New Since Previous Update"), #4 (Analyst Notes), #5 (Macro Calendar Importance), or a Tier 2 item — see `IDEAS.md`.
 
 ### Notes for future Claude
 - This file (§1–9) is the durable context. Read it fully before touching code. `IDEAS.md` is the backlog — check it before proposing new features so you don't re-litigate a prioritization decision Carlo already made.

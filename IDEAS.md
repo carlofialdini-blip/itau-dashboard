@@ -22,8 +22,8 @@ These either reuse data the pipeline already computes and throws away, or are a 
 ### 1. ~~Surface the News Importance Score~~ — DONE
 Shipped: Low/Medium/High badge on every news card, all 4 pages, same thresholds everywhere (`core/scoring.py`), sort order untouched (still strict recency). See `CLAUDE.md` §4 for details.
 
-### 2. Data Freshness / Staleness Indicators *(my addition — not on the original list)*
-The reliability work from a few sessions ago made every source degrade gracefully on failure — if `credit_scraper.py` times out, the dashboard silently keeps showing yesterday's cached credit news with no visible signal that anything's stale. That's the right failure mode for the pipeline, but it's invisible to the reader. Cheap fix: each scraper/generator already writes a `last_updated` timestamp into its cache file (currently written but never read anywhere — confirmed, `CLAUDE.md` §7). Surface it: a small "as of HH:MM" per section, and if a source's `last_updated` is more than one refresh cycle old, flag it visibly (e.g. a muted amber dot). This directly closes a gap the retry/resilience work introduced and is exactly "depth on existing features," not new surface area.
+### 2. ~~Data Freshness / Staleness Indicators~~ — REJECTED
+*(was my addition, not on the original list)* Carlo doesn't see value in this (as-of timestamps + stale-source flagging). Dropped — not resurfacing as a recommendation. Leaving the entry here only so it isn't re-proposed from scratch in a future session.
 
 ### 3. "What's New Since Previous Update" *(from the original list)*
 The merge logic in every scraper already diffs `new_articles` against `existing_cache` by link. Before overwriting the cache, it's a few lines to count what's actually new this run vs. carried over, and pass that count into the template as "14 new articles, 2 new events since this morning's update." Cheap, and it makes the twice-daily cadence feel alive rather than just "the file changed."
