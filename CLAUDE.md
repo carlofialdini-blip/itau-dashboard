@@ -98,6 +98,7 @@ Chronological, most-recent last. Only decisions with lasting architectural conse
 - **Removed per-sector section headers in Economic Data grids** — each sector previously started its own CSS auto-fill grid row, leaving visible blank slots whenever a sector's dataset count didn't evenly fill a row. Flattened to one grid per page; sector now shown via a colored left border + small tag instead of a hard row break.
 - **Itaú logo embedded as base64** — resized the original 3840×3840 source (`Itaú.jpeg`) down to 120×120 (`assets/itau_logo.png`) before embedding, to avoid bloating `dashboard.html` by ~500KB for a header icon.
 - **Timestamps converted to Brasília time at the source** — Google News RSS publishes in UTC; `parse_date()` (the single choke point used by all 4 news feeds) now converts via `zoneinfo.ZoneInfo("America/Sao_Paulo")` immediately after parsing, so every downstream display (article time, header "Updated" stamp) is correct without touching each call site individually.
+- **News importance badges (Low/Medium/High)** — every scraper already computed a `relevance_score()` to decide what clears `MIN_SCORE`, then discarded it (`del a["_score"]`). Kept it instead: `core/scoring.py` buckets it (`importance_bucket()`, thresholds High ≥8 / Medium ≥5 / Low below, same on every page), each scraper persists it as `importance_score` + `importance`, and the template shows it as a small badge on every news card. Sort order stays strictly recency-based per explicit instruction — importance is informational only, not a resort key. Thresholds were calibrated against real re-scraped data, not guessed: every bucket has meaningful representation on all 4 pages (see git log commit `1e731d9`).
 
 ---
 
@@ -142,7 +143,9 @@ Frontend: **Plotly.js** via CDN `<script>` tag in the template (not an npm depen
 - Standardized chart UI (PNG/CSV/Expand) across every page, shared modal.
 - Brasília-time display for all article/header timestamps.
 - Itaú logo in header.
+- News importance badges (Low/Medium/High) on every card, all 4 pages, sort still strict recency.
 - Root-level `update_dashboard.py` / `setup.py` workflow, verified end-to-end.
+- `IDEAS.md` — prioritized backlog of future enhancements (Tier 1 item #1, importance scoring, now shipped).
 
 ### Known bugs / technical debt
 - None currently open that I'm aware of — most recently reported issues (modal overlap, blank Economic Data grid slots, Brazil 10Y empty, wrong timezone) have been fixed and verified.
@@ -150,7 +153,8 @@ Frontend: **Plotly.js** via CDN `<script>` tag in the template (not an npm depen
 - Original `Itaú.jpeg` (398KB, 3840×3840) is committed to the repo even though only the small processed `assets/itau_logo.png` is used by the build — kept intentionally as a reprocessing source, not dead weight to clean up.
 
 ### Next recommended tasks
-- None pending as of the last session — dashboard is in a stable, verified state. Next work will be driven by new feedback from Carlo or his team once the file is actually circulated.
+- See `IDEAS.md` for the full prioritized backlog. Tier 1 item #1 (importance badges) is done; item #2 (Data Freshness / Staleness Indicators) is the next-cheapest, highest-value pick — the `last_updated` timestamp each scraper already writes is currently never read anywhere.
+- Otherwise: wait for feedback from Carlo/his team once the dashboard is actually circulated, rather than building further ahead of confirmed need.
 
 ---
 
@@ -180,19 +184,25 @@ Frontend: **Plotly.js** via CDN `<script>` tag in the template (not an npm depen
 ## 10. Session Handoff
 
 ### Last completed task
-Set up this `CLAUDE.md` file as the project's persistent memory, per Carlo's request. No code changes this session.
+Shipped news importance badges (Low/Medium/High) on every news card across all 4 pages — Tier 1 item #1 from `IDEAS.md`. Also created `IDEAS.md` itself this session (a prioritized backlog from Carlo's feature-idea list, reorganized into cost/value tiers, with a few items flagged as conflicting with his stated "depth over volume" goal).
 
 ### Files modified
-None (documentation only — `CLAUDE.md` created).
+- `core/scoring.py` (new) — shared `importance_bucket()`.
+- `core/generate_dashboard.py` — pass `importance` through in all 4 news-loading functions.
+- `scrapers/{scraper,brazil_scraper,china_scraper,credit_scraper}.py` — keep the relevance score instead of deleting it; compute and persist `importance`.
+- `templates/dashboard_template.html` — badge CSS + markup on all 4 news-card blocks.
+- `IDEAS.md` (new) — the backlog; item #1 now marked done.
+- `CLAUDE.md` — this update.
 
 ### Current state
-Dashboard pipeline is stable and fully verified as of commit `1aaebf4` ("Display article and header timestamps in Brasília time, not raw UTC"). All 4 news feeds, all 3 event generators, all chart sources (except the intentionally-relabeled Brazil Selic Rate), the standardized chart UI, and the Itaú-branded header are working and pushed to `main` on GitHub.
+Dashboard pipeline is stable and fully verified as of commit `1e731d9` ("Add news importance badges (Low/Medium/High) to every news card"). All 4 news feeds now carry and display importance badges; verified against real re-scraped data (not just synthetic checks) that thresholds produce a sensible spread on every page and that recency sort is untouched. Everything from prior sessions (chart UI, Brasília timestamps, Itaú logo, static-file workflow) still holds.
 
 ### Next recommended task
-Wait for feedback from Carlo after he circulates the dashboard to his team — no known open issues to preemptively fix. If starting fresh, run `python3 update_dashboard.py` to confirm the pipeline still runs clean end-to-end before making changes.
+`IDEAS.md` Tier 1 item #2 — Data Freshness / Staleness Indicators. The `last_updated` field every scraper/generator already writes to its cache file is currently never read by anything; surfacing it (an "as of HH:MM" per section, flagged if stale) closes a real visibility gap left by the retry/graceful-degradation work. Cheap, same shape as the work just finished (read a field that already exists, wire it through `generate_dashboard.py`, render it).
 
 ### Notes for future Claude
-- This file (§1–9) is the durable context. Read it fully before touching code.
+- This file (§1–9) is the durable context. Read it fully before touching code. `IDEAS.md` is the backlog — check it before proposing new features so you don't re-litigate a prioritization decision Carlo already made.
 - The project has gone through several rounds of "user reports X is broken/inconsistent → root-cause it, don't just patch the symptom" — e.g. the news-age bug existed in 5 places, not 1; the BCB 12511 issue was confirmed via direct curl testing to be BCB's fault, not a network flakiness issue, before deciding to replace it. Keep that standard: verify root cause with actual tool calls (curl, run the script, inspect real output) before claiming a fix.
 - Carlo is non-error-tolerant about financial data accuracy — when a data source is broken, prefer "clearly labeled fallback" or "honest N/A" over "quietly wrong number." This shaped the Brazil 10Y → Selic decision.
 - The user has been iterating rapidly on UI/UX feedback in short messages (e.g. "put it below the news," then "actually make it a tab," then "make the tab first"). Expect continued fast iteration; keep changes scoped to exactly what's asked rather than over-building ahead of confirmed direction.
+- When Carlo asks for discussion/planning before coding (as he did for `IDEAS.md`), respect that explicitly — produce the artifact requested, give a direct opinion when asked, but don't start implementing until he confirms scope. He confirmed scope for importance badges in a short back-and-forth (Low/Medium/High, every card, keep recency sort, same thresholds everywhere) before any code was written.

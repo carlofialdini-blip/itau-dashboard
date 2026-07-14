@@ -19,12 +19,8 @@ Backlog for the Portfolio Intelligence Dashboard. Nothing here is scheduled — 
 
 These either reuse data the pipeline already computes and throws away, or are a few hours of Python with zero new infrastructure.
 
-### 1. Surface the News Importance Score *(from "News Importance Score")*
-**Not a new idea — this already exists and is being deleted.** All four scrapers compute a `relevance_score()` per article (source trust, keyword hits, sector match) to decide what clears the `MIN_SCORE` bar, then explicitly discard it:
-```python
-del a["_score"]   # scraper.py:229, brazil_scraper.py:236, china_scraper.py:209, credit_scraper.py:255
-```
-Keep it instead, rescale it to something presentable (e.g. 1–5 stars or Low/Med/High), and surface it as a small badge on each news card. Zero new fetching, zero new dependencies — this is the single cheapest item in the whole list.
+### 1. ~~Surface the News Importance Score~~ — DONE
+Shipped: Low/Medium/High badge on every news card, all 4 pages, same thresholds everywhere (`core/scoring.py`), sort order untouched (still strict recency). See `CLAUDE.md` §4 for details.
 
 ### 2. Data Freshness / Staleness Indicators *(my addition — not on the original list)*
 The reliability work from a few sessions ago made every source degrade gracefully on failure — if `credit_scraper.py` times out, the dashboard silently keeps showing yesterday's cached credit news with no visible signal that anything's stale. That's the right failure mode for the pipeline, but it's invisible to the reader. Cheap fix: each scraper/generator already writes a `last_updated` timestamp into its cache file (currently written but never read anywhere — confirmed, `CLAUDE.md` §7). Surface it: a small "as of HH:MM" per section, and if a source's `last_updated` is more than one refresh cycle old, flag it visibly (e.g. a muted amber dot). This directly closes a gap the retry/resilience work introduced and is exactly "depth on existing features," not new surface area.
