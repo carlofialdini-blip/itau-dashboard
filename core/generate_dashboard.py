@@ -553,6 +553,88 @@ def load_credit_news():
     return cache, rows
 
 
+def load_unified_news():
+    """Single feed combining Portfolio + Brazil + China + Credit news.
+
+    Every row gets a `country` tag (Brazil for Portfolio/Brazil/Credit —
+    portfolio companies are all B3-listed and credit news is the Brazilian
+    credit market; China for China) and an `origin` tag (which source it
+    came from, used for badge coloring since only Brazil/China/Credit carry
+    a per-sector color already). Sorted strictly by recency, matching every
+    prior per-source feed — importance is shown per-card, never used to
+    resort.
+    """
+    portfolio_rows, companies = [], []
+    if os.path.exists(NEWS_FILE):
+        with open(NEWS_FILE, "r", encoding="utf-8") as f:
+            portfolio_raw = json.load(f)
+        portfolio_rows, companies, _, _ = flatten_news(portfolio_raw)
+    for r in portfolio_rows:
+        r["source"]  = r.pop("provider")
+        r["country"] = "Brazil"
+        r["origin"]  = "portfolio"
+
+    _, brazil_rows = load_brazil_news()
+    for r in brazil_rows:
+        r["country"] = "Brazil"
+        r["origin"]  = "brazil"
+        r["company"] = None
+
+    _, china_rows = load_china_news()
+    for r in china_rows:
+        r["country"] = "China"
+        r["origin"]  = "china"
+        r["company"] = None
+
+    _, credit_rows = load_credit_news()
+    for r in credit_rows:
+        r["country"] = "Brazil"
+        r["origin"]  = "credit"
+        r["company"] = None
+
+    rows = portfolio_rows + brazil_rows + china_rows + credit_rows
+    rows.sort(
+        key=lambda x: x["datetime"] if x["datetime"] else datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+
+    sectors = sorted({r["sector"] for r in rows if r.get("sector")})
+    return rows, ["Brazil", "China"], sectors, sorted(companies)
+
+
+def load_unified_events():
+    """Single Calendar feed combining Brazil + China events, with Portfolio
+    (Cockpit) earnings/COPOM events folded into the Brazil bucket. Portfolio
+    events that duplicate a Brazil event on the same (date, title) are
+    dropped rather than shown twice — this happens for COPOM, which both
+    events_generator.py and brazil_events_generator.py independently
+    schedule with identical titles ("COPOM – Reunião (1º dia)" /
+    "COPOM – Decisão da Selic") for the same dates.
+    """
+    brazil_events, _    = load_brazil_events()
+    china_events, _     = load_china_events()
+    portfolio_events, _ = load_events()
+
+    for ev in brazil_events:
+        ev["country"] = "Brazil"
+    for ev in china_events:
+        ev["country"] = "China"
+
+    brazil_keys = {(ev["date"], ev["title"]) for ev in brazil_events}
+    for ev in portfolio_events:
+        if (ev["date"], ev["title"]) in brazil_keys:
+            continue  # duplicate COPOM entry — Brazil's generator already has it
+        ev["country"] = "Brazil"
+        brazil_events.append(ev)
+
+    events = brazil_events + china_events
+    events.sort(key=lambda x: x["date_obj"])
+    months = {}
+    for ev in events:
+        months.setdefault(ev["month_label"], []).append(ev)
+    return events, list(months.items())
+
+
 def fetch_brazil_charts() -> dict:
     """Pre-fetch BCB OLINDA macro series and normalise to {date, value} format."""
     import time as _time
@@ -888,12 +970,11 @@ def fetch_cockpit_data():
     return data
 
 
-def render(rows, companies, sectors, providers, events, event_months,
-           china_news, china_articles, china_events, china_event_months,
+def render(unified_news, news_countries, news_sectors, news_companies,
+           unified_events, event_months,
            china_charts, china_catalog,
-           brazil_news, brazil_articles, brazil_events, brazil_event_months,
            brazil_charts,
-           credit_news, credit_articles, credit_charts,
+           credit_charts,
            cockpit):
     env      = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
     template = env.get_template(TEMPLATE_FILE)
@@ -902,39 +983,25 @@ def render(rows, companies, sectors, providers, events, event_months,
         cockpit=cockpit,
         cockpit_groups=COCKPIT_GROUPS,
         cockpit_json=json.dumps(cockpit),
-        # Portfolio
-        articles=rows,
-        companies=companies,
-        sectors=sectors,
-        providers=providers,
-        events=events,
+        # News (unified: Portfolio + Brazil + China + Credit)
+        news=unified_news,
+        news_total=len(unified_news),
+        news_countries=news_countries,
+        news_sectors=news_sectors,
+        news_companies=news_companies,
+        # Calendar (unified: Brazil incl. Portfolio + China)
+        events=unified_events,
         event_months=event_months,
-        # China
-        china_news=china_news,
-        china_articles=china_articles,
-        china_total=len(china_articles),
-        china_events=china_events,
-        china_event_months=china_event_months,
+        # Economic Data (Brazil + China + Credit, merged client-side)
         china_datasets_json=json.dumps(CHINA_DATASETS),
-        num_china_datasets=len(CHINA_DATASETS),
         china_charts_json=json.dumps(china_charts),
-        china_catalog_json=json.dumps(china_catalog),
-        # Brazil
-        brazil_news=brazil_news,
-        brazil_articles=brazil_articles,
-        brazil_total=len(brazil_articles),
-        brazil_events=brazil_events,
-        brazil_event_months=brazil_event_months,
         brazil_datasets_json=json.dumps(BRAZIL_DATASETS),
-        num_brazil_datasets=len(BRAZIL_DATASETS),
         brazil_charts_json=json.dumps(brazil_charts),
-        # Credit
-        credit_news=credit_news,
-        credit_articles=credit_articles,
-        credit_total=len(credit_articles),
         credit_datasets_json=json.dumps(CREDIT_DATASETS),
-        num_credit_datasets=len(CREDIT_DATASETS),
         credit_charts_json=json.dumps(credit_charts),
+        num_econ_datasets=len(CHINA_DATASETS) + len(BRAZIL_DATASETS) + len(CREDIT_DATASETS),
+        # Other Datasets (China catalog browser)
+        china_catalog_json=json.dumps(china_catalog),
         generated=datetime.now(BRASILIA_TZ).strftime("%Y-%m-%d %H:%M"),
         logo_data_uri=_logo_data_uri(),
     )
@@ -943,23 +1010,13 @@ def render(rows, companies, sectors, providers, events, event_months,
 
 
 def main():
-    print("Loading portfolio news...")
-    with open(NEWS_FILE, "r", encoding="utf-8") as f:
-        news = json.load(f)
-    rows, companies, sectors, providers = flatten_news(news)
-    print(f"  {len(rows)} articles")
+    print("Loading unified news feed (Portfolio + Brazil + China + Credit)...")
+    unified_news, news_countries, news_sectors, news_companies = load_unified_news()
+    print(f"  {len(unified_news)} articles — {len(news_sectors)} sectors, {len(news_companies)} companies")
 
-    print("Loading events...")
-    events, event_months = load_events()
-    print(f"  {len(events)} events")
-
-    print("Loading China news...")
-    china_news, china_articles = load_china_news()
-    print(f"  {len(china_articles)} articles across {len(china_news)} sectors")
-
-    print("Loading China events...")
-    china_events, china_event_months = load_china_events()
-    print(f"  {len(china_events)} China events")
+    print("Loading unified events calendar (Brazil incl. Portfolio + China)...")
+    unified_events, event_months = load_unified_events()
+    print(f"  {len(unified_events)} events")
 
     print("Fetching China chart data...")
     china_charts = fetch_china_charts()
@@ -967,20 +1024,8 @@ def main():
     print("Fetching China dataset catalog...")
     china_catalog = fetch_china_catalog()
 
-    print("Loading Brazil news...")
-    brazil_news, brazil_articles = load_brazil_news()
-    print(f"  {len(brazil_articles)} articles across {len(brazil_news)} sectors")
-
-    print("Loading Brazil events...")
-    brazil_events, brazil_event_months = load_brazil_events()
-    print(f"  {len(brazil_events)} Brazil events")
-
     print("Fetching Brazil macro charts (BCB)...")
     brazil_charts = fetch_brazil_charts()
-
-    print("Loading Credit news...")
-    credit_news, credit_articles = load_credit_news()
-    print(f"  {len(credit_articles)} articles across {len(credit_news)} sectors")
 
     print("Fetching Credit market charts (BCB)...")
     credit_charts = fetch_credit_charts()
@@ -988,12 +1033,11 @@ def main():
     print("Fetching cockpit market data...")
     cockpit = fetch_cockpit_data()
 
-    render(rows, companies, sectors, providers, events, event_months,
-           china_news, china_articles, china_events, china_event_months,
+    render(unified_news, news_countries, news_sectors, news_companies,
+           unified_events, event_months,
            china_charts, china_catalog,
-           brazil_news, brazil_articles, brazil_events, brazil_event_months,
            brazil_charts,
-           credit_news, credit_articles, credit_charts,
+           credit_charts,
            cockpit)
     print("\ndashboard.html generated successfully.")
 

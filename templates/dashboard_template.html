@@ -77,10 +77,11 @@ div.hdr-mark { background: var(--accent); }
 }
 .page-btn:hover { color: var(--text); }
 .page-btn.active { background: var(--bg); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-.page-btn.active.portfolio { color: var(--accent); }
-.page-btn.active.brazil    { color: var(--br-green); }
-.page-btn.active.china     { color: var(--cn-red); }
-.page-btn.active.credit    { color: var(--cr-violet); }
+.page-btn.active.cockpit  { color: var(--accent); }
+.page-btn.active.news     { color: var(--br-green); }
+.page-btn.active.econ     { color: var(--cr-violet); }
+.page-btn.active.calendar { color: var(--green); }
+.page-btn.active.datasets { color: var(--cn-red); }
 
 .hdr-right { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 .live-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--green); text-transform: uppercase; letter-spacing: .8px; }
@@ -472,10 +473,11 @@ div.hdr-mark { background: var(--accent); }
   </div>
 
   <div class="page-switcher">
-    <button class="page-btn portfolio active" id="btnPortfolio" onclick="showPage('portfolio')">📊 Cockpit</button>
-    <button class="page-btn brazil"           id="btnBrazil"   onclick="showPage('brazil')">🇧🇷 Brazil</button>
-    <button class="page-btn china"            id="btnChina"    onclick="showPage('china')">🇨🇳 China</button>
-    <button class="page-btn credit"           id="btnCredit"   onclick="showPage('credit')">💳 Credit</button>
+    <button class="page-btn cockpit active" id="btnCockpit"  onclick="showPage('cockpit')">📊 Cockpit</button>
+    <button class="page-btn news"           id="btnNews"     onclick="showPage('news')">📰 News</button>
+    <button class="page-btn econ"           id="btnEcon"     onclick="showPage('econ')">📈 Economic Data</button>
+    <button class="page-btn calendar"       id="btnCalendar" onclick="showPage('calendar')">🗓️ Calendar</button>
+    <button class="page-btn datasets"       id="btnDatasets" onclick="showPage('datasets')">🇨🇳 Other Datasets</button>
   </div>
 
   <div class="hdr-right">
@@ -488,16 +490,9 @@ div.hdr-mark { background: var(--accent); }
 <!-- ══════════════════════════════════════════════
      COCKPIT PAGE
 ══════════════════════════════════════════════ -->
-<div id="portfolioPage" class="page active">
+<div id="cockpitPage" class="page active">
 
-  <div class="tab-nav">
-    <button class="tab-btn active" id="pfTabMarket" onclick="pfTab('market')" style="border-bottom-color:var(--accent)">Market Data</button>
-    <button class="tab-btn"        id="pfTabNews"   onclick="pfTab('news')">News Feed <span class="tab-badge" id="pfNewsBadge">{{ articles|length }}</span></button>
-    <button class="tab-btn"        id="pfTabEvents" onclick="pfTab('events')">Events Calendar <span class="tab-badge">{{ events|length }}</span></button>
-  </div>
-
-  <!-- Market Data tab -->
-  <div class="tab-panel active mkt-overview" id="pfPanelMarket">
+  <div class="mkt-overview">
     <div class="mkt-overview-hdr">
       <span class="mkt-overview-title">Market Overview</span>
       <span class="mkt-updated">{{ generated }}</span>
@@ -546,63 +541,99 @@ div.hdr-mark { background: var(--accent); }
     <div class="mkt-footnote">* Suzano (SUZB3.SA) and Klabin (KLBN11.SA) used as Brazilian pulp &amp; paper proxies for BHKP / NBSK benchmarks.</div>
   </div>
 
-  <!-- News tab -->
-  <div class="tab-panel" id="pfPanelNews">
-    <div class="with-sidebar">
-      <aside class="sidebar">
-        <div class="search-wrap">
-          <svg class="search-icon" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
-          <input type="text" id="pfSearch" class="search-input" placeholder="Search headlines…" autocomplete="off">
-        </div>
-        <div class="filter-group">
-          <div class="filter-group-title">Company</div>
-          <select id="pfCompany" class="filter-select"><option value="">All companies</option>{% for c in companies %}<option>{{ c }}</option>{% endfor %}</select>
-        </div>
-        <div class="filter-group">
-          <div class="filter-group-title">Sector</div>
-          <select id="pfSector" class="filter-select"><option value="">All sectors</option>{% for s in sectors %}<option>{{ s }}</option>{% endfor %}</select>
-        </div>
-        <div class="filter-group">
-          <div class="filter-group-title">Source</div>
-          <select id="pfProvider" class="filter-select"><option value="">All sources</option>{% for p in providers %}<option>{{ p }}</option>{% endfor %}</select>
-        </div>
-      </aside>
-      <main class="feed">
-        <div class="feed-header"><span class="feed-count"><strong id="pfFeedN">{{ articles|length }}</strong> headlines</span></div>
-        <div id="pfFeed">
-          {% for a in articles %}
-          <div class="news-card" data-co="{{ a.company }}" data-sec="{{ a.sector }}" data-prov="{{ a.provider }}" data-q="{{ a.title|lower }} {{ a.company|lower }} {{ a.provider|lower }}">
-            <div class="card-bar" data-pf-sec="{{ a.sector }}"></div>
-            <div class="card-body">
-              <div class="card-badges">
-                <span class="badge-co" data-pf-co="{{ a.company }}">{{ a.company }}</span>
-                <span class="badge-sec">{{ a.sector }}</span>
-                <span class="badge-importance badge-importance-{{ a.importance }}">{{ a.importance }}</span>
-              </div>
-              <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
-              <div class="card-meta"><span class="meta-src">{{ a.provider }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>
-            </div>
-            <div class="card-time" data-ts="{{ a.published }}">{{ a.elapsed }}</div>
-          </div>
-          {% endfor %}
-        </div>
-        <div class="no-results" id="pfNoRes" style="display:none"><div class="no-results-title">No headlines found</div><div>Try adjusting your filters.</div></div>
-      </main>
-    </div>
-  </div>
+</div><!-- /cockpitPage -->
 
-  <!-- Events tab -->
-  <div class="tab-panel" id="pfPanelEvents">
+
+<!-- ══════════════════════════════════════════════
+     NEWS PAGE (unified: Portfolio + Brazil + China + Credit)
+══════════════════════════════════════════════ -->
+<div id="newsPage" class="page">
+  <div class="with-sidebar">
+    <aside class="sidebar">
+      <div class="search-wrap">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+        <input type="text" id="newsSearch" class="search-input" placeholder="Search headlines…" autocomplete="off">
+      </div>
+      <div class="filter-group">
+        <div class="filter-group-title">Country</div>
+        <select id="newsCountry" class="filter-select"><option value="">All countries</option>{% for c in news_countries %}<option>{{ c }}</option>{% endfor %}</select>
+      </div>
+      <div class="filter-group">
+        <div class="filter-group-title">Sector</div>
+        <select id="newsSector" class="filter-select"><option value="">All sectors</option>{% for s in news_sectors %}<option>{{ s }}</option>{% endfor %}</select>
+      </div>
+      <div class="filter-group">
+        <div class="filter-group-title">Company</div>
+        <select id="newsCompany" class="filter-select"><option value="">All companies</option>{% for c in news_companies %}<option>{{ c }}</option>{% endfor %}</select>
+      </div>
+    </aside>
+    <main class="feed">
+      <div class="feed-header"><span class="feed-count"><strong id="newsFeedN">{{ news_total }}</strong> headlines</span></div>
+      <div id="newsFeed">
+        {% for a in news %}
+        <div class="news-card" data-country="{{ a.country }}" data-sec="{{ a.sector }}" data-co="{{ a.company or '' }}" data-q="{{ a.title|lower }} {{ a.sector|lower }} {{ (a.company or '')|lower }} {{ a.source|lower }}">
+          <div class="card-bar" {% if a.color %}style="background:{{ a.color }}"{% else %}data-pf-sec="{{ a.sector }}"{% endif %}></div>
+          <div class="card-body">
+            <div class="card-badges">
+              {% if a.company %}<span class="badge-co" data-pf-co="{{ a.company }}">{{ a.company }}</span>{% endif %}
+              {% if a.color %}
+              <span class="badge-sec" style="color:{{ a.color }};background:{{ a.color }}18;border-color:{{ a.color }}40">{{ a.sector }}</span>
+              {% else %}
+              <span class="badge-sec" data-pf-sec="{{ a.sector }}">{{ a.sector }}</span>
+              {% endif %}
+              <span class="badge-importance badge-importance-{{ a.importance }}">{{ a.importance }}</span>
+            </div>
+            <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
+            <div class="card-meta"><span class="meta-src">{{ a.source }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>
+          </div>
+          <div class="card-time" data-ts="{{ a.published }}">{{ a.elapsed }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="no-results" id="newsNoRes" style="display:none"><div class="no-results-title">No headlines found</div><div>Try adjusting your filters.</div></div>
+    </main>
+  </div>
+</div><!-- /newsPage -->
+
+
+<!-- ══════════════════════════════════════════════
+     ECONOMIC DATA PAGE (unified: Brazil + China + Credit)
+══════════════════════════════════════════════ -->
+<div id="econPage" class="page">
+  <div class="catalog-bar">
+    <span class="f-tag active" data-econ-src="" style="margin-bottom:0"><span class="f-dot" style="background:#64748b"></span><span>All sources</span><span class="f-count">{{ num_econ_datasets }}</span></span>
+    <span class="f-tag" data-econ-src="brazil" style="margin-bottom:0"><span class="f-dot" style="background:#16a34a"></span><span>🇧🇷 Brazil</span></span>
+    <span class="f-tag" data-econ-src="china" style="margin-bottom:0"><span class="f-dot" style="background:#dc2626"></span><span>🇨🇳 China</span></span>
+    <span class="f-tag" data-econ-src="credit" style="margin-bottom:0"><span class="f-dot" style="background:#7c3aed"></span><span>💳 Credit</span></span>
+  </div>
+  <div id="econCharts"><!-- built by JS --></div>
+</div><!-- /econPage -->
+
+
+<!-- ══════════════════════════════════════════════
+     CALENDAR PAGE (unified: Brazil incl. Portfolio + China)
+══════════════════════════════════════════════ -->
+<div id="calendarPage" class="page">
+  <div class="catalog-bar">
+    <span class="f-tag active" data-cal-country="" style="margin-bottom:0"><span class="f-dot" style="background:#64748b"></span><span>All countries</span><span class="f-count">{{ events|length }}</span></span>
+    <span class="f-tag" data-cal-country="Brazil" style="margin-bottom:0"><span class="f-dot" style="background:#16a34a"></span><span>🇧🇷 Brazil</span></span>
+    <span class="f-tag" data-cal-country="China" style="margin-bottom:0"><span class="f-dot" style="background:#dc2626"></span><span>🇨🇳 China</span></span>
+  </div>
+  <div id="calendarList">
     {% for month_label, month_events in event_months %}
     <div class="ev-month-header">{{ month_label }}</div>
     {% for ev in month_events %}
-    <div class="ev-row ev-{{ ev.type }}{% if ev.is_past %} is-past{% endif %}{% if ev.is_today %} is-today{% endif %}">
+    <div class="ev-row ev-{{ ev.type }}{% if ev.is_past %} is-past{% endif %}{% if ev.is_today %} is-today{% endif %}" data-cal-country="{{ ev.country }}">
       <div class="ev-date"><div class="ev-date-day">{{ ev.date_obj.day }}</div><div class="ev-date-month">{{ ev.date_obj.strftime('%b') }}</div></div>
       <div class="ev-bar"></div>
       <div class="ev-body">
         <div class="ev-badges">
           <span class="ev-type-badge">{{ ev.type }}</span>
-          {% if ev.company %}<span class="ev-co-badge" data-pf-ev-co="{{ ev.company }}">{{ ev.company }}</span>{% endif %}
+          {% if ev.company %}
+          <span class="ev-co-badge" data-pf-ev-co="{{ ev.company }}">{{ ev.company }}</span>
+          {% elif ev.sector %}
+          <span class="badge-sec">{{ ev.sector }}</span>
+          {% endif %}
         </div>
         <div class="ev-title">{{ ev.title }}</div>
         {% if ev.description %}<div class="ev-desc">{{ ev.description }}</div>{% endif %}
@@ -612,236 +643,20 @@ div.hdr-mark { background: var(--accent); }
     {% endfor %}
     {% endfor %}
   </div>
-
-</div><!-- /portfolioPage -->
-
-
-<!-- ══════════════════════════════════════════════
-     BRAZIL PAGE
-══════════════════════════════════════════════ -->
-<div id="brazilPage" class="page">
-
-  <div class="tab-nav">
-    <button class="tab-btn br-tab active" id="brTabNews"    onclick="brTab('news')"    style="border-bottom-color:var(--br-green)">News <span class="tab-badge" style="background:var(--br-dim);color:var(--br-green)" id="brNewsBadge">{{ brazil_total }}</span></button>
-    <button class="tab-btn br-tab"        id="brTabEvents"  onclick="brTab('events')">Events Calendar <span class="tab-badge">{{ brazil_events|length }}</span></button>
-    <button class="tab-btn br-tab"        id="brTabCharts"  onclick="brTab('charts')">Economic Data <span class="tab-badge">{{ num_brazil_datasets }}</span></button>
-  </div>
-
-  <!-- News tab (default) -->
-  <div class="tab-panel active" id="brPanelNews">
-    <div class="with-sidebar">
-      <aside class="sidebar">
-        <div class="search-wrap">
-          <svg class="search-icon" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
-          <input type="text" id="brSearch" class="search-input" placeholder="Search headlines…" autocomplete="off">
-        </div>
-        <div class="filter-group">
-          <div class="filter-group-title">Sector</div>
-          <div class="f-tag active" data-br-sec="" style="--f-active-border:var(--br-green)"><span class="f-dot" style="background:#64748b"></span><span>All sectors</span><span class="f-count">{{ brazil_total }}</span></div>
-          {% for sec, data in brazil_news.items() %}
-          <div class="f-tag" data-br-sec="{{ sec }}"><span class="f-dot" style="background:{{ data.color }}"></span><span>{{ sec }}</span><span class="f-count">{{ data.articles|length }}</span></div>
-          {% endfor %}
-        </div>
-      </aside>
-      <main class="feed">
-        <div class="feed-header"><span class="feed-count"><strong id="brFeedN">{{ brazil_total }}</strong> headlines</span></div>
-        <div id="brFeed">
-          {% for a in brazil_articles %}
-          <div class="news-card" data-br-sec="{{ a.sector }}" data-br-q="{{ a.title|lower }} {{ a.sector|lower }} {{ a.source|lower }}">
-            <div class="card-bar" style="background:{{ a.color }}"></div>
-            <div class="card-body">
-              <div class="card-badges">
-                <span class="badge-co" style="color:{{ a.color }};background:{{ a.color }}18;border-color:{{ a.color }}40">{{ a.sector }}</span>
-                <span class="badge-importance badge-importance-{{ a.importance }}">{{ a.importance }}</span>
-              </div>
-              <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
-              <div class="card-meta"><span class="meta-src">{{ a.source }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>
-            </div>
-            <div class="card-time" data-ts="{{ a.published }}">{{ a.elapsed }}</div>
-          </div>
-          {% endfor %}
-        </div>
-        <div class="no-results" id="brNoRes" style="display:none"><div class="no-results-title">No headlines found</div><div>Try a different sector.</div></div>
-      </main>
-    </div>
-  </div>
-
-  <!-- Events tab -->
-  <div class="tab-panel" id="brPanelEvents">
-    {% for month_label, month_events in brazil_event_months %}
-    <div class="ev-month-header">{{ month_label }}</div>
-    {% for ev in month_events %}
-    <div class="ev-row ev-{{ ev.type }}{% if ev.is_past %} is-past{% endif %}{% if ev.is_today %} is-today{% endif %}">
-      <div class="ev-date"><div class="ev-date-day">{{ ev.date_obj.day }}</div><div class="ev-date-month">{{ ev.date_obj.strftime('%b') }}</div></div>
-      <div class="ev-bar"></div>
-      <div class="ev-body">
-        <div class="ev-badges">
-          <span class="ev-type-badge">{{ ev.type }}</span>
-          {% if ev.sector %}<span class="badge-sec">{{ ev.sector }}</span>{% endif %}
-        </div>
-        <div class="ev-title">{{ ev.title }}</div>
-        {% if ev.description %}<div class="ev-desc">{{ ev.description }}</div>{% endif %}
-      </div>
-      <div class="ev-countdown {% if ev.is_today %}today{% elif ev.is_soon %}soon{% elif ev.is_past %}past{% else %}future{% endif %}">{{ ev.countdown }}</div>
-    </div>
-    {% endfor %}
-    {% endfor %}
-  </div>
-
-  <!-- Macro Data tab -->
-  <div class="tab-panel" id="brPanelCharts">
-    <div id="brCharts"><!-- built by JS --></div>
-  </div>
-
-</div><!-- /brazilPage -->
+</div><!-- /calendarPage -->
 
 
 <!-- ══════════════════════════════════════════════
-     CHINA PAGE
+     OTHER DATASETS PAGE (China dataset catalog)
 ══════════════════════════════════════════════ -->
-<div id="chinaPage" class="page">
-
-  <div class="tab-nav">
-    <button class="tab-btn cn-tab active" id="cnTabNews"    onclick="cnTab('news')"    style="border-bottom-color:var(--cn-red)">News <span class="tab-badge" style="background:var(--cn-dim);color:var(--cn-red)" id="cnNewsBadge">{{ china_total }}</span></button>
-    <button class="tab-btn cn-tab"        id="cnTabEvents"  onclick="cnTab('events')">Events Calendar <span class="tab-badge">{{ china_events|length }}</span></button>
-    <button class="tab-btn cn-tab"        id="cnTabCharts"  onclick="cnTab('charts')">Economic Data <span class="tab-badge">{{ num_china_datasets }}</span></button>
-    <button class="tab-btn cn-tab"        id="cnTabCatalog" onclick="cnTab('catalog')">All Datasets <span class="tab-badge" id="cnCatalogBadge">—</span></button>
+<div id="datasetsPage" class="page">
+  <div class="catalog-bar">
+    <input  type="text" id="catSearch"   class="catalog-search" placeholder="Search datasets…" autocomplete="off">
+    <select              id="catCategory" class="catalog-cat"><option value="">All categories</option></select>
+    <span id="catCount" class="catalog-count"></span>
   </div>
-
-  <!-- News tab (default) -->
-  <div class="tab-panel active" id="cnPanelNews">
-    <div class="with-sidebar" id="cnNewsLayout">
-      <aside class="sidebar">
-        <div class="search-wrap">
-          <svg class="search-icon" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
-          <input type="text" id="cnSearch" class="search-input" placeholder="Search headlines…" autocomplete="off">
-        </div>
-        <div class="filter-group">
-          <div class="filter-group-title">Sector</div>
-          <div class="f-tag active" data-cn-sec=""><span class="f-dot" style="background:#64748b"></span><span>All sectors</span><span class="f-count">{{ china_total }}</span></div>
-          {% for sec, data in china_news.items() %}
-          <div class="f-tag" data-cn-sec="{{ sec }}"><span class="f-dot" style="background:{{ data.color }}"></span><span>{{ sec }}</span><span class="f-count">{{ data.articles|length }}</span></div>
-          {% endfor %}
-        </div>
-      </aside>
-      <main class="feed">
-        <div class="feed-header"><span class="feed-count"><strong id="cnFeedN">{{ china_total }}</strong> headlines</span></div>
-        <div id="cnFeed">
-          {% for a in china_articles %}
-          <div class="news-card" data-cn-sec="{{ a.sector }}" data-cn-q="{{ a.title|lower }} {{ a.sector|lower }} {{ a.source|lower }}">
-            <div class="card-bar" style="background:{{ a.color }}"></div>
-            <div class="card-body">
-              <div class="card-badges">
-                <span class="badge-co" style="color:{{ a.color }};background:{{ a.color }}18;border-color:{{ a.color }}40">{{ a.sector }}</span>
-                <span class="badge-importance badge-importance-{{ a.importance }}">{{ a.importance }}</span>
-              </div>
-              <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
-              <div class="card-meta"><span class="meta-src">{{ a.source }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>
-            </div>
-            <div class="card-time" data-ts="{{ a.published }}">{{ a.elapsed }}</div>
-          </div>
-          {% endfor %}
-        </div>
-        <div class="no-results" id="cnNoRes" style="display:none"><div class="no-results-title">No headlines found</div><div>Try a different sector.</div></div>
-      </main>
-    </div>
-  </div>
-
-  <!-- Charts tab -->
-  <div class="tab-panel" id="cnPanelCharts">
-    <div id="cnCharts"><!-- built by JS --></div>
-  </div>
-
-  <!-- Catalog tab -->
-  <div class="tab-panel" id="cnPanelCatalog">
-    <div class="catalog-bar">
-      <input  type="text" id="catSearch"   class="catalog-search" placeholder="Search datasets…" autocomplete="off">
-      <select              id="catCategory" class="catalog-cat"><option value="">All categories</option></select>
-      <span id="catCount" class="catalog-count"></span>
-    </div>
-    <div class="catalog-grid" id="catGrid"><!-- built by JS --></div>
-  </div>
-
-  <!-- Events tab -->
-  <div class="tab-panel" id="cnPanelEvents">
-    {% for month_label, month_events in china_event_months %}
-    <div class="ev-month-header">{{ month_label }}</div>
-    {% for ev in month_events %}
-    <div class="ev-row ev-{{ ev.type }}{% if ev.is_past %} is-past{% endif %}{% if ev.is_today %} is-today{% endif %}">
-      <div class="ev-date"><div class="ev-date-day">{{ ev.date_obj.day }}</div><div class="ev-date-month">{{ ev.date_obj.strftime('%b') }}</div></div>
-      <div class="ev-bar"></div>
-      <div class="ev-body">
-        <div class="ev-badges">
-          <span class="ev-type-badge">{{ ev.type }}</span>
-          {% if ev.sector %}<span class="badge-sec">{{ ev.sector }}</span>{% endif %}
-        </div>
-        <div class="ev-title">{{ ev.title }}</div>
-        {% if ev.description %}<div class="ev-desc">{{ ev.description }}</div>{% endif %}
-      </div>
-      <div class="ev-countdown {% if ev.is_today %}today{% elif ev.is_soon %}soon{% elif ev.is_past %}past{% else %}future{% endif %}">{{ ev.countdown }}</div>
-    </div>
-    {% endfor %}
-    {% endfor %}
-  </div>
-
-</div><!-- /chinaPage -->
-
-
-<!-- ══════════════════════════════════════════════
-     CREDIT PAGE
-══════════════════════════════════════════════ -->
-<div id="creditPage" class="page">
-
-  <div class="tab-nav">
-    <button class="tab-btn cr-tab active" id="crTabNews"   onclick="crTab('news')"   style="border-bottom-color:var(--cr-violet)">Credit News <span class="tab-badge" style="background:var(--cr-dim);color:var(--cr-violet)" id="crNewsBadge">{{ credit_total }}</span></button>
-    <button class="tab-btn cr-tab"        id="crTabCharts" onclick="crTab('charts')">Credit Data <span class="tab-badge">{{ num_credit_datasets }}</span></button>
-  </div>
-
-  <!-- News tab (default) -->
-  <div class="tab-panel active" id="crPanelNews">
-    <div class="with-sidebar">
-      <aside class="sidebar">
-        <div class="search-wrap">
-          <svg class="search-icon" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
-          <input type="text" id="crSearch" class="search-input" placeholder="Search headlines…" autocomplete="off">
-        </div>
-        <div class="filter-group">
-          <div class="filter-group-title">Sector</div>
-          <div class="f-tag active" data-cr-sec=""><span class="f-dot" style="background:#64748b"></span><span>All sectors</span><span class="f-count">{{ credit_total }}</span></div>
-          {% for sec, data in credit_news.items() %}
-          <div class="f-tag" data-cr-sec="{{ sec }}"><span class="f-dot" style="background:{{ data.color }}"></span><span>{{ sec }}</span><span class="f-count">{{ data.articles|length }}</span></div>
-          {% endfor %}
-        </div>
-      </aside>
-      <main class="feed">
-        <div class="feed-header"><span class="feed-count"><strong id="crFeedN">{{ credit_total }}</strong> headlines</span></div>
-        <div id="crFeed">
-          {% for a in credit_articles %}
-          <div class="news-card" data-cr-sec="{{ a.sector }}" data-cr-q="{{ a.title|lower }} {{ a.sector|lower }} {{ a.source|lower }}">
-            <div class="card-bar" style="background:{{ a.color }}"></div>
-            <div class="card-body">
-              <div class="card-badges">
-                <span class="badge-co" style="color:{{ a.color }};background:{{ a.color }}18;border-color:{{ a.color }}40">{{ a.sector }}</span>
-                <span class="badge-importance badge-importance-{{ a.importance }}">{{ a.importance }}</span>
-              </div>
-              <div class="news-title"><a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a></div>
-              <div class="card-meta"><span class="meta-src">{{ a.source }}</span>{% if a.published_short %}<span class="meta-dot">·</span><span>{{ a.published_short }}</span>{% endif %}</div>
-            </div>
-            <div class="card-time" data-ts="{{ a.published }}">{{ a.elapsed }}</div>
-          </div>
-          {% endfor %}
-        </div>
-        <div class="no-results" id="crNoRes" style="display:none"><div class="no-results-title">No headlines found</div><div>Try a different sector.</div></div>
-      </main>
-    </div>
-  </div>
-
-  <!-- Credit Data tab -->
-  <div class="tab-panel" id="crPanelCharts">
-    <div id="crCharts"><!-- built by JS --></div>
-  </div>
-
-</div><!-- /creditPage -->
+  <div class="catalog-grid" id="catGrid"><!-- built by JS --></div>
+</div><!-- /datasetsPage -->
 
 <!-- Shared chart expand modal — used by every chart on every page -->
 <div class="chart-modal" id="chartModal" onclick="chartModalClose(event)">
@@ -875,69 +690,31 @@ const CREDIT_DATASETS = {{ credit_datasets_json }};
 const CREDIT_CHARTS   = {{ credit_charts_json }};
 
 // ── Page switching ────────────────────────────────────────────────────────
+// Five content-type pages now (Cockpit / News / Economic Data / Calendar /
+// Other Datasets) replacing the old four source pages (Cockpit / Brazil /
+// China / Credit), each of which used to reimplement its own News/Events/
+// Charts tabs. Economic Data and Other Datasets still lazy-build on first
+// visit, same rAF-deferred pattern as before so Plotly measures real
+// dimensions after the panel is actually visible.
 function showPage(name) {
-  ['portfolio','brazil','china','credit'].forEach(p => {
+  ['cockpit','news','econ','calendar','datasets'].forEach(p => {
     document.getElementById(p + 'Page').classList.toggle('active', p === name);
     document.getElementById('btn' + p.charAt(0).toUpperCase() + p.slice(1)).classList.toggle('active', p === name);
   });
-  if (name === 'china' && !window._catalogBuilt) { buildCatalog(); window._catalogBuilt = true; }
-}
-
-// ── Portfolio tabs ────────────────────────────────────────────────────────
-function pfTab(name) {
-  ['Market','News','Events'].forEach(t => {
-    document.getElementById(`pfPanel${t}`).classList.toggle('active', t.toLowerCase() === name);
-    const btn = document.getElementById(`pfTab${t}`);
-    btn.classList.toggle('active', t.toLowerCase() === name);
-    btn.style.borderBottomColor = t.toLowerCase() === name ? 'var(--accent)' : 'transparent';
-  });
-}
-
-// ── Credit tabs ───────────────────────────────────────────────────────────
-function crTab(name) {
-  ['News','Charts'].forEach(t => {
-    document.getElementById(`crPanel${t}`).classList.toggle('active', t.toLowerCase() === name);
-    const btn = document.getElementById(`crTab${t}`);
-    btn.classList.toggle('active', t.toLowerCase() === name);
-    btn.style.borderBottomColor = t.toLowerCase() === name ? 'var(--cr-violet)' : 'transparent';
-  });
-  if (name === 'charts' && !window._crChartsBuilt) {
-    window._crChartsBuilt = true;
-    requestAnimationFrame(() => requestAnimationFrame(() => buildCrCharts()));
+  if (name === 'econ' && !window._econChartsBuilt) {
+    window._econChartsBuilt = true;
+    requestAnimationFrame(() => requestAnimationFrame(() => buildEconCharts()));
+  }
+  if (name === 'datasets' && !window._catalogBuilt) {
+    window._catalogBuilt = true;
+    buildCatalog();
   }
 }
 
-// ── Brazil tabs ───────────────────────────────────────────────────────────
-function brTab(name) {
-  ['News','Events','Charts'].forEach(t => {
-    document.getElementById(`brPanel${t}`).classList.toggle('active', t.toLowerCase() === name);
-    const btn = document.getElementById(`brTab${t}`);
-    btn.classList.toggle('active', t.toLowerCase() === name);
-    btn.style.borderBottomColor = t.toLowerCase() === name ? 'var(--br-green)' : 'transparent';
-  });
-  if (name === 'charts' && !window._brChartsBuilt) {
-    window._brChartsBuilt = true;
-    requestAnimationFrame(() => requestAnimationFrame(() => buildBrCharts()));
-  }
-}
-
-// ── China tabs ────────────────────────────────────────────────────────────
-function cnTab(name) {
-  ['Charts','News','Events','Catalog'].forEach(t => {
-    document.getElementById(`cnPanel${t}`).classList.toggle('active', t.toLowerCase() === name);
-    const btn = document.getElementById(`cnTab${t}`);
-    btn.classList.toggle('active', t.toLowerCase() === name);
-    btn.style.borderBottomColor = t.toLowerCase() === name ? 'var(--cn-red)' : 'transparent';
-  });
-  // Build charts the first time the user opens that tab — defer with rAF so
-  // Plotly measures real dimensions after the panel becomes visible.
-  if (name === 'charts' && !window._chartsBuilt) {
-    window._chartsBuilt = true;
-    requestAnimationFrame(() => requestAnimationFrame(() => buildCharts()));
-  }
-}
-
-// ── Portfolio badge colours ───────────────────────────────────────────────
+// ── Portfolio-origin badge colours (News feed + Calendar) ──────────────────
+// Only rows/events without a pre-assigned per-sector color (i.e. Portfolio-
+// origin, which has no natural sector color) carry data-pf-sec/-co/-ev-co —
+// Brazil/China/Credit rows already get their color inline from Jinja.
 (function () {
   const SEC_PAL = ['#2563eb','#059669','#d97706','#7c3aed','#dc2626','#0891b2','#65a30d','#ea580c','#db2777','#0d9488'];
   const CO_PAL  = [
@@ -953,7 +730,7 @@ function cnTab(name) {
     {bg:'rgba(13,148,136,.07)', bd:'rgba(13,148,136,.25)', tx:'#134e4a'},
   ];
   const secMap = {}, coMap = {}, secList = [], coList = [];
-  document.querySelectorAll('#pfFeed .news-card').forEach(card => {
+  document.querySelectorAll('#newsFeed .news-card').forEach(card => {
     const s = card.querySelector('[data-pf-sec]'), c = card.querySelector('[data-pf-co]');
     if (s && !secMap[s.dataset.pfSec]) { secMap[s.dataset.pfSec] = SEC_PAL[secList.length % SEC_PAL.length]; secList.push(s.dataset.pfSec); }
     if (c && !coMap[c.dataset.pfCo])   { coMap[c.dataset.pfCo]   = CO_PAL[coList.length   % CO_PAL.length];  coList.push(c.dataset.pfCo); }
@@ -969,49 +746,25 @@ function cnTab(name) {
   });
 })();
 
-// ── Portfolio news filtering ──────────────────────────────────────────────
+// ── News filtering (unified: Country / Sector / Company / search) ──────────
 (function () {
-  const cards = Array.from(document.querySelectorAll('#pfFeed .news-card'));
-  let co = '', sec = '', prov = '', q = '';
+  const cards = Array.from(document.querySelectorAll('#newsFeed .news-card'));
+  let country = '', sec = '', co = '', q = '';
   function apply() {
     let n = 0;
     cards.forEach(c => {
-      const show = (!co || c.dataset.co === co) && (!sec || c.dataset.sec === sec)
-                && (!prov || c.dataset.prov === prov) && (!q || c.dataset.q.includes(q));
+      const show = (!country || c.dataset.country === country) && (!sec || c.dataset.sec === sec)
+                && (!co || c.dataset.co === co) && (!q || c.dataset.q.includes(q));
       c.style.display = show ? '' : 'none';
       if (show) n++;
     });
-    ['pfCount','pfNewsBadge','pfFeedN'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = n; });
-    document.getElementById('pfNoRes').style.display = n === 0 ? '' : 'none';
+    ['newsFeedN'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = n; });
+    document.getElementById('newsNoRes').style.display = n === 0 ? '' : 'none';
   }
-  document.getElementById('pfCompany').addEventListener('change',  e => { co   = e.target.value; apply(); });
-  document.getElementById('pfSector').addEventListener('change',   e => { sec  = e.target.value; apply(); });
-  document.getElementById('pfProvider').addEventListener('change', e => { prov = e.target.value; apply(); });
-  document.getElementById('pfSearch').addEventListener('input',    e => { q    = e.target.value.toLowerCase().trim(); apply(); });
-  cards.forEach(card => card.addEventListener('click', e => { if (e.target.tagName !== 'A') { const a = card.querySelector('a'); if (a) window.open(a.href,'_blank','noopener'); } }));
-})();
-
-// ── China news filtering ──────────────────────────────────────────────────
-(function () {
-  const cards = Array.from(document.querySelectorAll('#cnFeed .news-card'));
-  let sec = '', q = '';
-  function apply() {
-    let n = 0;
-    cards.forEach(c => {
-      const show = (!sec || c.dataset.cnSec === sec) && (!q || c.dataset.cnQ.includes(q));
-      c.style.display = show ? '' : 'none';
-      if (show) n++;
-    });
-    ['cnCount','cnNewsBadge','cnFeedN'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = n; });
-    document.getElementById('cnNoRes').style.display = n === 0 ? '' : 'none';
-  }
-  document.querySelectorAll('[data-cn-sec]').forEach(tag => {
-    tag.addEventListener('click', () => {
-      document.querySelectorAll('[data-cn-sec]').forEach(t => t.classList.remove('active'));
-      tag.classList.add('active'); sec = tag.dataset.cnSec; apply();
-    });
-  });
-  document.getElementById('cnSearch').addEventListener('input', e => { q = e.target.value.toLowerCase().trim(); apply(); });
+  document.getElementById('newsCountry').addEventListener('change', e => { country = e.target.value; apply(); });
+  document.getElementById('newsSector').addEventListener('change',  e => { sec     = e.target.value; apply(); });
+  document.getElementById('newsCompany').addEventListener('change', e => { co      = e.target.value; apply(); });
+  document.getElementById('newsSearch').addEventListener('input',   e => { q       = e.target.value.toLowerCase().trim(); apply(); });
   cards.forEach(card => card.addEventListener('click', e => { if (e.target.tagName !== 'A') { const a = card.querySelector('a'); if (a) window.open(a.href,'_blank','noopener'); } }));
 })();
 
@@ -1055,30 +808,6 @@ function _plotChart(plotEl, statEl, unitEl, ftrEl, traces, chartType, meta) {
   }
 }
 
-function renderChart(ds) {
-  const plotEl = document.getElementById(`plot-${ds.id}`);
-  const statEl = document.getElementById(`stat-${ds.id}`);
-  const unitEl = document.getElementById(`unit-${ds.id}`);
-  const ftrEl  = document.getElementById(`ftr-${ds.id}`);
-  const meta   = CHINA_CHARTS[ds.id];
-
-  if (!meta || !meta.data || !meta.data.length) {
-    statEl.textContent = 'Data not available'; statEl.classList.add('chart-error'); return;
-  }
-  const traces = ds.series.map(s => {
-    const x = meta.data.map(p => p.date);
-    const y = meta.data.map(p => (s.key in p ? p[s.key] : null));
-    return ds.chartType === 'bar'
-      ? {x, y, name:s.label, type:'bar',     marker:{color:s.color}, hovertemplate:`%{y}<extra>${s.label}</extra>`}
-      : {x, y, name:s.label, type:'scatter', mode:'lines', line:{color:s.color, width:2}, hovertemplate:`%{y}<extra>${s.label}</extra>`};
-  });
-  if (!traces.some(t => t.y.some(v => v !== null))) {
-    statEl.textContent = `Key mismatch (available: ${Object.keys(meta.data[0]).filter(k=>k!=='date').join(', ')})`;
-    statEl.classList.add('chart-error'); return;
-  }
-  _plotChart(plotEl, statEl, unitEl, ftrEl, traces, ds.chartType, meta);
-}
-
 function _buildGrid(datasets, container, makeCardHTML) {
   /** Build one flat card grid (no per-sector section breaks — those left
    *  empty trailing slots whenever a sector's item count didn't fill a row).
@@ -1089,6 +818,7 @@ function _buildGrid(datasets, container, makeCardHTML) {
     const card = document.createElement('div');
     card.className = 'chart-card';
     card.style.borderLeftColor = ds.sectorColor || 'var(--border-2)';
+    if (ds._origin) card.dataset.origin = ds._origin;
     card.innerHTML = makeCardHTML(ds);
     grid.appendChild(card);
   });
@@ -1096,147 +826,101 @@ function _buildGrid(datasets, container, makeCardHTML) {
   return datasets;
 }
 
-function buildCharts() {
-  const container = document.getElementById('cnCharts');
-  const pending   = _buildGrid(CHINA_DATASETS, container, ds => {
-    const csv   = `https://chinadata.live/api/v2/data/${ds.id}?format=csv`;
+// ── Economic Data charts (unified: Brazil + China + Credit) ────────────────
+// Merges what used to be three separate build functions (one per source
+// page) into one flat grid, each card tagged with its source so the filter
+// pills can show/hide by origin. China datasets carry a multi-series `series`
+// array; Brazil/Credit datasets are single-trace (`ds.color`/`ds.chartType`
+// directly) — both shapes are handled below instead of duplicating the plot
+// logic three times.
+function buildEconCharts() {
+  const combined = [
+    ...BRAZIL_DATASETS.map(ds => ({ ...ds, _origin: 'brazil', _chartsData: BRAZIL_CHARTS,
+      _csv: `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${ds.bcb_series}/dados?formato=csv` })),
+    ...CHINA_DATASETS.map(ds => ({ ...ds, _origin: 'china', _chartsData: CHINA_CHARTS,
+      _csv: `https://chinadata.live/api/v2/data/${ds.id}?format=csv` })),
+    ...CREDIT_DATASETS.map(ds => ({ ...ds, _origin: 'credit', _chartsData: CREDIT_CHARTS,
+      _csv: `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${ds.bcb_series}/dados?formato=csv` })),
+  ];
+
+  const container = document.getElementById('econCharts');
+  const pending    = _buildGrid(combined, container, ds => {
     const title = ds.title.replace(/'/g, "\\'");
     return `
     <div class="chart-card-header">
       <div><div class="chart-title">${ds.title}</div><div class="chart-sector-tag">${ds.sector}</div><div class="chart-unit" id="unit-${ds.id}"></div></div>
       <div class="chart-actions">
         <button class="chart-icon-btn" onclick="chartDownloadPng('plot-${ds.id}','${title}')" title="Download PNG">${ICON_PNG_SVG}</button>
-        <a class="chart-icon-link" href="${csv}" download title="Download CSV">${ICON_CSV_SVG}</a>
-        <button class="chart-icon-btn" onclick="chartExpand('plot-${ds.id}','${title}','${csv}')" title="Expand">${ICON_EXPAND_SVG}</button>
+        <a class="chart-icon-link" href="${ds._csv}" download title="Download CSV">${ICON_CSV_SVG}</a>
+        <button class="chart-icon-btn" onclick="chartExpand('plot-${ds.id}','${title}','${ds._csv}')" title="Expand">${ICON_EXPAND_SVG}</button>
       </div>
     </div>
     <div class="chart-status" id="stat-${ds.id}"><div class="spinner"></div> Loading…</div>
     <div class="chart-plot"   id="plot-${ds.id}"></div>
     <div class="chart-footer" id="ftr-${ds.id}"></div>`;
   });
-  // Yield to browser so newly added elements get layout, then render
-  requestAnimationFrame(() => pending.forEach(ds => renderChart(ds)));
-}
 
-// ── Credit news filtering ─────────────────────────────────────────────────
-(function () {
-  const cards = Array.from(document.querySelectorAll('#crFeed .news-card'));
-  let sec = '', q = '';
-  function apply() {
-    let n = 0;
-    cards.forEach(c => {
-      const show = (!sec || c.dataset.crSec === sec) && (!q || c.dataset.crQ.includes(q));
-      c.style.display = show ? '' : 'none';
-      if (show) n++;
-    });
-    ['crNewsBadge','crFeedN'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = n; });
-    document.getElementById('crNoRes').style.display = n === 0 ? '' : 'none';
-  }
-  document.querySelectorAll('[data-cr-sec]').forEach(tag => {
-    tag.addEventListener('click', () => {
-      document.querySelectorAll('[data-cr-sec]').forEach(t => t.classList.remove('active'));
-      tag.classList.add('active'); sec = tag.dataset.crSec; apply();
-    });
-  });
-  document.getElementById('crSearch').addEventListener('input', e => { q = e.target.value.toLowerCase().trim(); apply(); });
-  cards.forEach(card => card.addEventListener('click', e => { if (e.target.tagName !== 'A') { const a = card.querySelector('a'); if (a) window.open(a.href,'_blank','noopener'); } }));
-})();
-
-// ── Credit charts ─────────────────────────────────────────────────────────
-function buildCrCharts() {
-  const container = document.getElementById('crCharts');
-  const pending   = _buildGrid(CREDIT_DATASETS, container, ds => {
-    const csv   = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${ds.bcb_series}/dados?formato=csv`;
-    const title = ds.title.replace(/'/g, "\\'");
-    return `
-      <div class="chart-card-header">
-        <div><div class="chart-title">${ds.title}</div><div class="chart-sector-tag">${ds.sector}</div><div class="chart-unit" id="cr-unit-${ds.id}"></div></div>
-        <div class="chart-actions">
-          <button class="chart-icon-btn" onclick="chartDownloadPng('cr-plot-${ds.id}','${title}')" title="Download PNG">${ICON_PNG_SVG}</button>
-          <a class="chart-icon-link" href="${csv}" download title="Download CSV">${ICON_CSV_SVG}</a>
-          <button class="chart-icon-btn" onclick="chartExpand('cr-plot-${ds.id}','${title}','${csv}')" title="Expand">${ICON_EXPAND_SVG}</button>
-        </div>
-      </div>
-      <div class="chart-status" id="cr-stat-${ds.id}"><div class="spinner"></div> Loading…</div>
-      <div class="chart-plot"   id="cr-plot-${ds.id}"></div>
-      <div class="chart-footer" id="cr-ftr-${ds.id}"></div>`;
-  });
   requestAnimationFrame(() => pending.forEach(ds => {
-    const meta = CREDIT_CHARTS[ds.id];
-    const x    = meta && meta.data ? meta.data.map(p => p.date)  : [];
-    const y    = meta && meta.data ? meta.data.map(p => p.value) : [];
-    const trace = ds.chartType === 'bar'
-      ? {x, y, type:'bar',     marker:{color:ds.color}, hovertemplate:'%{y}<extra></extra>'}
-      : {x, y, type:'scatter', mode:'lines', line:{color:ds.color, width:2}, hovertemplate:'%{y}<extra></extra>'};
-    _plotChart(
-      document.getElementById(`cr-plot-${ds.id}`),
-      document.getElementById(`cr-stat-${ds.id}`),
-      document.getElementById(`cr-unit-${ds.id}`),
-      document.getElementById(`cr-ftr-${ds.id}`),
-      [trace], ds.chartType, meta
-    );
+    const plotEl = document.getElementById(`plot-${ds.id}`);
+    const statEl = document.getElementById(`stat-${ds.id}`);
+    const unitEl = document.getElementById(`unit-${ds.id}`);
+    const ftrEl  = document.getElementById(`ftr-${ds.id}`);
+    const meta   = ds._chartsData[ds.id];
+
+    let traces;
+    if (ds.series) {
+      // China-style: multiple named series sharing one date axis
+      if (!meta || !meta.data || !meta.data.length) {
+        statEl.textContent = 'Data not available'; statEl.classList.add('chart-error'); return;
+      }
+      traces = ds.series.map(s => {
+        const x = meta.data.map(p => p.date);
+        const y = meta.data.map(p => (s.key in p ? p[s.key] : null));
+        return ds.chartType === 'bar'
+          ? {x, y, name:s.label, type:'bar',     marker:{color:s.color}, hovertemplate:`%{y}<extra>${s.label}</extra>`}
+          : {x, y, name:s.label, type:'scatter', mode:'lines', line:{color:s.color, width:2}, hovertemplate:`%{y}<extra>${s.label}</extra>`};
+      });
+      if (!traces.some(t => t.y.some(v => v !== null))) {
+        statEl.textContent = `Key mismatch (available: ${Object.keys(meta.data[0]).filter(k=>k!=='date').join(', ')})`;
+        statEl.classList.add('chart-error'); return;
+      }
+    } else {
+      // Brazil/Credit-style: single trace
+      const x = meta && meta.data ? meta.data.map(p => p.date)  : [];
+      const y = meta && meta.data ? meta.data.map(p => p.value) : [];
+      traces = [ds.chartType === 'bar'
+        ? {x, y, type:'bar',     marker:{color:ds.color}, hovertemplate:'%{y}<extra></extra>'}
+        : {x, y, type:'scatter', mode:'lines', line:{color:ds.color, width:2}, hovertemplate:'%{y}<extra></extra>'}];
+    }
+    _plotChart(plotEl, statEl, unitEl, ftrEl, traces, ds.chartType, meta);
   }));
 }
 
-// ── Brazil news filtering ─────────────────────────────────────────────────
+// ── Economic Data source filter (All / Brazil / China / Credit) ────────────
 (function () {
-  const cards = Array.from(document.querySelectorAll('#brFeed .news-card'));
-  let sec = '', q = '';
-  function apply() {
-    let n = 0;
-    cards.forEach(c => {
-      const show = (!sec || c.dataset.brSec === sec) && (!q || c.dataset.brQ.includes(q));
-      c.style.display = show ? '' : 'none';
-      if (show) n++;
+  const pills = document.querySelectorAll('#econPage [data-econ-src]');
+  pills.forEach(p => p.addEventListener('click', () => {
+    pills.forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    const src = p.dataset.econSrc;
+    document.querySelectorAll('#econCharts .chart-card').forEach(card => {
+      card.style.display = (!src || card.dataset.origin === src) ? '' : 'none';
     });
-    ['brCount','brNewsBadge','brFeedN'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = n; });
-    document.getElementById('brNoRes').style.display = n === 0 ? '' : 'none';
-  }
-  document.querySelectorAll('[data-br-sec]').forEach(tag => {
-    tag.addEventListener('click', () => {
-      document.querySelectorAll('[data-br-sec]').forEach(t => t.classList.remove('active'));
-      tag.classList.add('active'); sec = tag.dataset.brSec; apply();
-    });
-  });
-  document.getElementById('brSearch').addEventListener('input', e => { q = e.target.value.toLowerCase().trim(); apply(); });
-  cards.forEach(card => card.addEventListener('click', e => { if (e.target.tagName !== 'A') { const a = card.querySelector('a'); if (a) window.open(a.href,'_blank','noopener'); } }));
+  }));
 })();
 
-// ── Brazil macro charts ───────────────────────────────────────────────────
-function buildBrCharts() {
-  const container = document.getElementById('brCharts');
-  const pending   = _buildGrid(BRAZIL_DATASETS, container, ds => {
-    const csv   = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${ds.bcb_series}/dados?formato=csv`;
-    const title = ds.title.replace(/'/g, "\\'");
-    return `
-      <div class="chart-card-header">
-        <div><div class="chart-title">${ds.title}</div><div class="chart-sector-tag">${ds.sector}</div><div class="chart-unit" id="br-unit-${ds.id}"></div></div>
-        <div class="chart-actions">
-          <button class="chart-icon-btn" onclick="chartDownloadPng('br-plot-${ds.id}','${title}')" title="Download PNG">${ICON_PNG_SVG}</button>
-          <a class="chart-icon-link" href="${csv}" download title="Download CSV">${ICON_CSV_SVG}</a>
-          <button class="chart-icon-btn" onclick="chartExpand('br-plot-${ds.id}','${title}','${csv}')" title="Expand">${ICON_EXPAND_SVG}</button>
-        </div>
-      </div>
-      <div class="chart-status" id="br-stat-${ds.id}"><div class="spinner"></div> Loading…</div>
-      <div class="chart-plot"   id="br-plot-${ds.id}"></div>
-      <div class="chart-footer" id="br-ftr-${ds.id}"></div>`;
-  });
-  requestAnimationFrame(() => pending.forEach(ds => {
-    const meta  = BRAZIL_CHARTS[ds.id];
-    const x     = meta && meta.data ? meta.data.map(p => p.date)  : [];
-    const y     = meta && meta.data ? meta.data.map(p => p.value) : [];
-    const trace = ds.chartType === 'bar'
-      ? {x, y, type:'bar',     marker:{color:ds.color}, hovertemplate:'%{y}<extra></extra>'}
-      : {x, y, type:'scatter', mode:'lines', line:{color:ds.color, width:2}, hovertemplate:'%{y}<extra></extra>'};
-    _plotChart(
-      document.getElementById(`br-plot-${ds.id}`),
-      document.getElementById(`br-stat-${ds.id}`),
-      document.getElementById(`br-unit-${ds.id}`),
-      document.getElementById(`br-ftr-${ds.id}`),
-      [trace], ds.chartType, meta
-    );
+// ── Calendar country filter (All / Brazil / China) ──────────────────────────
+(function () {
+  const pills = document.querySelectorAll('#calendarPage [data-cal-country]');
+  pills.forEach(p => p.addEventListener('click', () => {
+    pills.forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    const country = p.dataset.calCountry;
+    document.querySelectorAll('#calendarList .ev-row').forEach(row => {
+      row.style.display = (!country || row.dataset.calCountry === country) ? '' : 'none';
+    });
   }));
-}
+})();
 
 // ── Dataset catalog ───────────────────────────────────────────────────────
 function buildCatalog() {
