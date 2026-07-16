@@ -9,15 +9,14 @@ Run:  python3 brazil_scraper.py
 
 import json
 import os
-import re
 import sys
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
-import requests
 import feedparser
 
 import urllib3
@@ -33,49 +32,105 @@ from core.scoring import importance_bucket  # noqa: E402
 OUTPUT_FILE  = ROOT / "data" / "brazil_news_cache.json"
 MAX_KEEP     = 50
 MIN_SCORE    = 2
-MAX_AGE_DAYS = 7    # keep articles up to 7 days old
+MIN_KEEP     = 30   # floor per sector — backfilled by score if the MIN_SCORE gate leaves fewer than this
+
+BRASILIA_TZ = ZoneInfo("America/Sao_Paulo")
 
 HEADERS = DEFAULT_HEADERS
 
 # ── Sector definitions ───────────────────────────────────────────────────────
+# Keyword lists are deliberately technical/specific (analyst-level terms,
+# tickers, regulators, indices) rather than generic sector words.
+#
+# Each keyword is queried SEPARATELY (not OR'd into one mega-query). Google
+# News RSS ranks a query's results by relevance, not recency, and caps each
+# query at ~100 entries — a broad OR query "spends" that budget on whichever
+# single sub-topic is most relevant overall, which can crowd out today's
+# articles on the query's other terms entirely. Confirmed by direct testing:
+# a 19-term OR query for Economy returned zero today-dated articles out of
+# 100 results; the same terms queried individually surfaced several. Querying
+# per-term costs more requests but is what actually finds today's news across
+# a sector's different sub-topics instead of just its single dominant one.
 BRAZIL_SECTORS: dict[str, dict] = {
     "Economy": {
-        "query": 'Brasil (economia OR PIB OR SELIC OR Banco Central OR fiscal OR inflação OR IPCA OR dívida pública)',
+        "keywords": [
+            "PIB", "IPCA", "IGP-M", "Selic", "Copom", "Banco Central",
+            "política monetária", "resultado primário", "dívida pública",
+            "arcabouço fiscal", "meta de inflação", "Tesouro Nacional",
+            "leilão de títulos", "Focus", "taxa de desemprego", "CAGED", "PNAD",
+            "risco-país", "rating soberano", "reforma tributária",
+        ],
         "description": "Macro economy, monetary policy, fiscal accounts, inflation",
         "color": "#16a34a",
     },
     "Energy": {
-        "query": 'Brasil (Petrobras OR petróleo OR pré-sal OR combustível OR refino OR gás natural OR energia)',
+        "keywords": [
+            "Petrobras", "pré-sal", "ANP", "leilão de petróleo", "bacia de Santos",
+            "refino", "diesel", "gás natural", "GNL", "gasoduto", "Comgás",
+            "ANEEL", "leilão de energia", "tarifa de energia", "matriz energética",
+            "energia eólica", "energia solar", "hidrelétrica", "ONS",
+        ],
         "description": "Oil, gas, Petrobras, energy sector",
         "color": "#f97316",
     },
     "Mining & Steel": {
-        "query": 'Brasil (Vale OR Gerdau OR mineração OR minério OR aço OR siderurgia OR ferro OR cobre)',
+        "keywords": [
+            "Vale", "minério de ferro", "Carajás", "S11D", "níquel", "cobre",
+            "bauxita", "CSN", "Usiminas", "Gerdau", "CBMM", "siderurgia",
+            "vergalhão", "bobina de aço", "antidumping aço", "IBRAM", "ANM",
+            "barragem de rejeitos",
+        ],
         "description": "Mining, iron ore, steel industry",
         "color": "#f59e0b",
     },
     "Pulp & Paper": {
-        "query": 'Brasil (Suzano OR celulose OR papel OR floresta OR eucalipto OR "indústria de papel")',
+        "keywords": [
+            "Suzano", "Klabin", "Bracell", "Eldorado", "celulose de mercado",
+            "fibra curta", "fibra longa", "BHKP", "NBSK", "preço da celulose",
+            "exportação de celulose", "papel kraft", "tissue", "eucalipto",
+            "manejo florestal", "Ibá",
+        ],
         "description": "Pulp, paper, cellulose sector",
         "color": "#10b981",
     },
     "Agriculture": {
-        "query": 'Brasil (agronegócio OR soja OR milho OR café OR açúcar OR exportação agrícola OR grãos)',
+        "keywords": [
+            "Conab", "safra", "soja em grão", "farelo de soja", "milho safrinha",
+            "café arábica", "açúcar VHP", "etanol de cana", "algodão em pluma",
+            "boi gordo", "arroba", "JBS", "Marfrig", "Minerva", "frigorífico",
+            "febre aftosa", "porto de Santos", "fertilizantes", "quebra de safra",
+        ],
         "description": "Agribusiness, commodities, exports",
         "color": "#84cc16",
     },
     "Financial": {
-        "query": 'Brasil (Itaú OR Bradesco OR "Banco do Brasil" OR crédito OR inadimplência OR Pix OR fintech OR bancos)',
+        "keywords": [
+            "Itaú", "Bradesco", "Banco do Brasil", "Santander", "BTG Pactual",
+            "Nubank", "inadimplência", "carteira de crédito", "spread bancário",
+            "Basileia", "Pix", "open finance", "CVM", "crédito consignado",
+            "crédito imobiliário", "fintech", "Stone", "PagSeguro", "IPO",
+            "oferta pública",
+        ],
         "description": "Banking sector, credit, interest rates",
         "color": "#2563eb",
     },
     "Industry": {
-        "query": 'Brasil (produção industrial OR manufatura OR PMI OR indústria OR WEG OR Embraer OR automotivo)',
+        "keywords": [
+            "PIM", "PMI industrial", "CNI", "capacidade instalada", "Anfavea",
+            "Embraer", "WEG", "indústria automotiva", "bens de capital",
+            "Zona Franca de Manaus", "IPI", "desoneração da folha",
+            "produção industrial",
+        ],
         "description": "Manufacturing, industrial output, PMI",
         "color": "#7c3aed",
     },
     "Trade & FX": {
-        "query": 'Brasil (balança comercial OR câmbio OR real OR exportações OR importações OR BRL OR dólar)',
+        "keywords": [
+            "balança comercial", "superávit comercial", "déficit comercial",
+            "Secex", "MDIC", "Mercosul", "acordo comercial", "tarifaço",
+            "dólar comercial", "PTAX", "swap cambial", "reservas internacionais",
+            "investimento estrangeiro direto", "balanço de pagamentos",
+        ],
         "description": "Trade balance, foreign exchange, exports/imports",
         "color": "#0891b2",
     },
@@ -130,12 +185,8 @@ def relevance_score(title: str, source: str, sector_keywords: list[str]) -> int:
     return score
 
 
-def extract_keywords(query: str) -> list[str]:
-    cleaned = re.sub(r'OR|AND|NOT|"', ' ', query)
-    return [w.strip() for w in cleaned.split() if len(w.strip()) > 2]
-
-
-def google_news_url(query: str) -> str:
+def google_news_url(term: str) -> str:
+    query = f'Brasil "{term}"' if " " in term else f"Brasil {term}"
     return (
         f"https://news.google.com/rss/search?"
         f"q={quote(query)}"
@@ -143,95 +194,104 @@ def google_news_url(query: str) -> str:
     )
 
 
-def is_fresh(published: str, now: datetime) -> bool:
+def is_today_brasilia(published: str, today_brasilia) -> bool:
+    """True if published falls on today's Brasília calendar date. Google
+    News gives GMT timestamps; convert before comparing dates, otherwise
+    articles from the last few hours of the Brasília day would be wrongly
+    read as "tomorrow" in UTC, and early-UTC-morning articles (still
+    yesterday in Brasília) would be wrongly kept."""
     try:
-        return (now - parsedate_to_datetime(published)).days <= MAX_AGE_DAYS
+        return parsedate_to_datetime(published).astimezone(BRASILIA_TZ).date() == today_brasilia
     except Exception:
         return False
 
 
-def balance_by_day(articles: list[dict], now: datetime, max_keep: int) -> list[dict]:
-    today_arts, yest_arts, older_arts = [], [], []
-    for a in articles:
-        try:
-            age = (now - parsedate_to_datetime(a["published"])).days
-        except Exception:
-            continue
-        if age == 0:   today_arts.append(a)
-        elif age == 1: yest_arts.append(a)
-        elif age <= MAX_AGE_DAYS: older_arts.append(a)
-    half = max_keep // 2
-    t    = today_arts[:half]
-    y    = yest_arts[:half]
-    gap  = max_keep - len(t) - len(y)
-    if gap > 0 and len(y) < len(yest_arts):
-        extra = yest_arts[len(y):len(y) + gap]
-        y += extra
-        gap -= len(extra)
-    if gap > 0 and len(t) < len(today_arts):
-        extra = today_arts[len(t):len(t) + gap]
-        t += extra
-        gap -= len(extra)
-    o = older_arts[:gap] if gap > 0 else []
-    return t + y + o
-
-
-def merge_articles(existing: list[dict], new_articles: list[dict], now: datetime) -> list[dict]:
+def merge_articles(existing: list[dict], new_articles: list[dict], today_brasilia) -> list[dict]:
+    """Same-day only: carry over still-today existing articles not already
+    in this run's results, then sort strictly by recency and cap. No day
+    bucketing needed — every kept article is from the same calendar day."""
     new_links = {a["link"] for a in new_articles}
     fresh_existing = [
         a for a in existing
-        if a["link"] not in new_links and is_fresh(a.get("published", ""), now)
+        if a["link"] not in new_links and is_today_brasilia(a.get("published", ""), today_brasilia)
     ]
-    return balance_by_day(new_articles + fresh_existing, now, MAX_KEEP)
+    combined = new_articles + fresh_existing
+
+    def _sort_key(a):
+        try:
+            return parsedate_to_datetime(a["published"])
+        except Exception:
+            return datetime.min.replace(tzinfo=timezone.utc)
+
+    combined.sort(key=_sort_key, reverse=True)
+    return combined[:MAX_KEEP]
 
 
 
 def fetch_sector(sector_name: str, config: dict) -> list[dict]:
-    url      = google_news_url(config["query"])
-    keywords = extract_keywords(config["query"])
+    keywords       = config["keywords"]
+    today_brasilia = datetime.now(BRASILIA_TZ).date()
 
-    try:
-        response = get_with_retry(url, headers=HEADERS, timeout=20)
-        feed = feedparser.parse(response.content)
-    except Exception as e:
-        print(f"    ERROR: {e}")
-        return []
+    candidates  = []
+    seen_titles = set()
+    seen_links  = set()
 
-    candidates = []
-    seen = set()
-    now  = datetime.now(timezone.utc)
-
-    for entry in feed.entries:
-        title = entry.get("title", "").strip()
-        if not title or title in seen:
-            continue
-        seen.add(title)
-
-        published = entry.get("published", "")
+    for term in keywords:
+        url = google_news_url(term)
         try:
-            pub_dt   = parsedate_to_datetime(published)
-            age_days = (now - pub_dt).days
-        except Exception:
+            response = get_with_retry(url, headers=HEADERS, timeout=15, retries=1)
+            feed = feedparser.parse(response.content)
+        except Exception as e:
+            print(f"      {term}: ERROR — {e}")
+            time.sleep(0.4)
             continue
 
-        if age_days > MAX_AGE_DAYS:
-            continue
+        for entry in feed.entries:
+            title = entry.get("title", "").strip()
+            link  = entry.get("link", "")
+            if not title or title in seen_titles or (link and link in seen_links):
+                continue
 
-        source = entry.get("source", {}).get("title", "Unknown")
-        score  = relevance_score(title, source, keywords)
+            published = entry.get("published", "")
+            try:
+                pub_dt = parsedate_to_datetime(published)
+            except Exception:
+                continue
 
-        candidates.append({
-            "title":     title,
-            "link":      entry.get("link", ""),
-            "published": published,
-            "source":    source,
-            "_score":    score,
-            "_pub_dt":   pub_dt,
-        })
+            if pub_dt.astimezone(BRASILIA_TZ).date() != today_brasilia:
+                continue  # hard gate: today (Brasília) only, no exceptions
 
-    filtered = [a for a in candidates if a["_score"] >= MIN_SCORE]
-    filtered.sort(key=lambda x: x["_pub_dt"], reverse=True)
-    kept = filtered[:MAX_KEEP]
+            seen_titles.add(title)
+            if link:
+                seen_links.add(link)
+
+            source = entry.get("source", {}).get("title", "Unknown")
+            score  = relevance_score(title, source, keywords)
+
+            candidates.append({
+                "title":     title,
+                "link":      link,
+                "published": published,
+                "source":    source,
+                "_score":    score,
+                "_pub_dt":   pub_dt,
+            })
+
+        time.sleep(0.4)
+
+    qualified = [a for a in candidates if a["_score"] >= MIN_SCORE]
+
+    # Floor: if today's genuinely-relevant articles don't reach MIN_KEEP,
+    # backfill with the next-best-scored candidates from today (never from
+    # another day) rather than leaving the sector thin.
+    if len(qualified) < MIN_KEEP:
+        qualified_links = {a["link"] for a in qualified}
+        remaining = [a for a in candidates if a["link"] not in qualified_links]
+        remaining.sort(key=lambda x: x["_score"], reverse=True)
+        qualified += remaining[:MIN_KEEP - len(qualified)]
+
+    qualified.sort(key=lambda x: x["_pub_dt"], reverse=True)
+    kept = qualified[:MAX_KEEP]
 
     for a in kept:
         a["importance_score"] = a.pop("_score")
@@ -243,7 +303,7 @@ def fetch_sector(sector_name: str, config: dict) -> list[dict]:
 
 def main():
     import os
-    now = datetime.now(timezone.utc)
+    today_brasilia = datetime.now(BRASILIA_TZ).date()
 
     existing_cache: dict = {}
     if os.path.exists(OUTPUT_FILE):
@@ -252,7 +312,7 @@ def main():
 
     print()
     print("=" * 60)
-    print("Brazil News Scraper  (last 7 days)")
+    print("Brazil News Scraper  (today only, Brasília time)")
     print("=" * 60)
 
     cache = {}
@@ -261,7 +321,7 @@ def main():
         print(f"\n  [{sector_name}]")
         new_articles = fetch_sector(sector_name, config)
         existing_articles = existing_cache.get(sector_name, {}).get("articles", [])
-        articles = merge_articles(existing_articles, new_articles, now)
+        articles = merge_articles(existing_articles, new_articles, today_brasilia)
         print(f"  → {len(new_articles)} new, {len(articles)} total after purge")
 
         cache[sector_name] = {
