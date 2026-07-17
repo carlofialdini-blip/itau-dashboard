@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from core.net_utils import get_with_retry, DEFAULT_HEADERS  # noqa: E402
 from core.scoring import importance_bucket  # noqa: E402
+from core.trusted_sources import is_trusted  # noqa: E402
 
 EXCEL_FILE   = ROOT / "data" / "portfolio.xlsx"
 OUTPUT_FILE  = ROOT / "data" / "news_cache.json"
@@ -30,29 +31,6 @@ MIN_SCORE    = 3    # minimum relevance score
 MAX_AGE_DAYS = 7    # keep articles up to 7 days old
 
 HEADERS = DEFAULT_HEADERS
-
-# ── Trusted financial news sources ──────────────────────────────────────────
-# Checked against the `source` field returned by Google News RSS.
-TRUSTED_SOURCES = {
-    # International wires & financial press
-    "Reuters", "Bloomberg", "Bloomberg Línea", "Financial Times",
-    "The Wall Street Journal", "WSJ", "CNBC", "MarketWatch",
-    "Investing.com", "TradingView", "Barron's", "Forbes",
-    "Business Insider", "S&P Global", "Moody's", "Fitch Ratings",
-    # Brazilian financial
-    "Valor Econômico", "InfoMoney", "Exame", "NeoFeed",
-    "Agência Brasil", "CNN Brasil", "UOL Economia",
-    "Estadão", "O Estado de S. Paulo", "Folha de S.Paulo",
-    "O Globo", "G1", "Broadcast", "Agência Estado",
-    "Seu Dinheiro", "MoneyTimes", "Capital Aberto",
-    "Investidor Institucional", "Pipeline Capital",
-    "Genial Investimentos", "XP Investimentos", "BTG Pactual",
-    "Itaú BBA", "Safra", "Bradesco BBI", "Ágora Investimentos",
-    "Rico", "Clear", "Suno Research",
-}
-
-# Lowercase set for fast case-insensitive lookup
-TRUSTED_LOWER = {s.lower() for s in TRUSTED_SOURCES}
 
 # ── Company aliases and stock tickers ───────────────────────────────────────
 # These supplement the keywords column and make queries far more specific.
@@ -124,13 +102,13 @@ def google_news_url(query: str) -> str:
 
 # ── Relevance scoring ────────────────────────────────────────────────────────
 
-def relevance_score(title: str, source: str, company: str, keywords: list[str]) -> int:
+def relevance_score(title: str, company: str, keywords: list[str]) -> int:
     """
     Score an article for relevance to the company (higher = more relevant).
+    Source trust is a hard pre-filter (see is_trusted()), not scored here —
+    every candidate reaching this function already passed that gate.
 
     Scoring breakdown:
-      +3  Trusted financial source
-      +2  Partially matched trusted source name
       +3  Company name as whole word in title  (skipped for ambiguous names)
       +2  Company alias or ticker in title
       +1  Each company keyword in title (cap +3)
@@ -138,14 +116,7 @@ def relevance_score(title: str, source: str, company: str, keywords: list[str]) 
       -2  Title shorter than 30 chars (likely a fragment/junk)
     """
     title_lower  = title.lower()
-    source_lower = source.lower()
     score = 0
-
-    # Source credibility
-    if source_lower in TRUSTED_LOWER:
-        score += 3
-    elif any(t in source_lower for t in TRUSTED_LOWER):
-        score += 2
 
     # Company name present in title (skip for ambiguous words like "vale")
     if company not in AMBIGUOUS_NAMES:
@@ -208,8 +179,12 @@ def fetch_articles(company: str, keywords: list[str]) -> tuple[list[dict], int, 
         if age_days > MAX_AGE_DAYS:
             continue
 
-        source = entry.get("source", {}).get("title", "Google News")
-        score  = relevance_score(title, source, company, keywords)
+        source_info = entry.get("source", {})
+        if not is_trusted(source_info.get("href", "")):
+            continue  # hard gate: only whitelisted domains
+
+        source = source_info.get("title", "Google News")
+        score  = relevance_score(title, company, keywords)
 
         candidates.append({
             "title":     title,

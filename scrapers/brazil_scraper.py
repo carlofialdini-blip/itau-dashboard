@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from core.net_utils import get_with_retry, DEFAULT_HEADERS  # noqa: E402
 from core.scoring import importance_bucket  # noqa: E402
+from core.trusted_sources import is_trusted  # noqa: E402
 
 OUTPUT_FILE  = ROOT / "data" / "brazil_news_cache.json"
 MAX_KEEP     = 50
@@ -136,20 +137,6 @@ BRAZIL_SECTORS: dict[str, dict] = {
     },
 }
 
-# ── Trusted sources ──────────────────────────────────────────────────────────
-TRUSTED_SOURCES = {
-    "Reuters", "Bloomberg", "Financial Times", "The Wall Street Journal",
-    "CNBC", "MarketWatch", "Investing.com",
-    "Valor Econômico", "InfoMoney", "Exame", "NeoFeed",
-    "Agência Brasil", "CNN Brasil", "UOL Economia",
-    "Estadão", "O Estado de S. Paulo", "Folha de S.Paulo",
-    "O Globo", "G1", "Broadcast", "Agência Estado",
-    "Seu Dinheiro", "MoneyTimes", "Capital Aberto",
-    "Suno Research", "Genial Investimentos", "XP Investimentos",
-    "BTG Pactual", "Itaú BBA", "Bradesco BBI",
-}
-TRUSTED_LOWER = {s.lower() for s in TRUSTED_SOURCES}
-
 BRAZIL_ECO_TERMS = {
     "economia", "pib", "selic", "ipca", "inflação", "dólar", "câmbio",
     "balança", "exportação", "importação", "investimento", "fiscal",
@@ -160,15 +147,11 @@ BRAZIL_ECO_TERMS = {
 }
 
 
-def relevance_score(title: str, source: str, sector_keywords: list[str]) -> int:
+def relevance_score(title: str, sector_keywords: list[str]) -> int:
+    """Source trust is a hard pre-filter (see is_trusted()), not scored here —
+    every candidate reaching this function already passed that gate."""
     title_lower  = title.lower()
-    source_lower = source.lower()
     score = 0
-
-    if source_lower in TRUSTED_LOWER:
-        score += 3
-    elif any(t in source_lower for t in TRUSTED_LOWER):
-        score += 2
 
     if "brasil" in title_lower or "brazil" in title_lower or "brasileiro" in title_lower:
         score += 2
@@ -261,12 +244,16 @@ def fetch_sector(sector_name: str, config: dict) -> list[dict]:
             if pub_dt.astimezone(BRASILIA_TZ).date() != today_brasilia:
                 continue  # hard gate: today (Brasília) only, no exceptions
 
+            source_info = entry.get("source", {})
+            if not is_trusted(source_info.get("href", "")):
+                continue  # hard gate: only whitelisted domains
+
             seen_titles.add(title)
             if link:
                 seen_links.add(link)
 
-            source = entry.get("source", {}).get("title", "Unknown")
-            score  = relevance_score(title, source, keywords)
+            source = source_info.get("title", "Unknown")
+            score  = relevance_score(title, keywords)
 
             candidates.append({
                 "title":     title,

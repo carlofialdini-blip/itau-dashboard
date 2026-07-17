@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from core.net_utils import get_with_retry, DEFAULT_HEADERS  # noqa: E402
 from core.scoring import importance_bucket  # noqa: E402
+from core.trusted_sources import is_trusted  # noqa: E402
 
 OUTPUT_FILE  = ROOT / "data" / "credit_news_cache.json"
 MAX_KEEP     = 50
@@ -104,20 +105,6 @@ CREDIT_SECTORS: dict[str, dict] = {
     },
 }
 
-# ── Trusted sources ──────────────────────────────────────────────────────────
-TRUSTED_SOURCES = {
-    "Reuters", "Bloomberg", "Financial Times", "The Wall Street Journal",
-    "CNBC", "MarketWatch", "Investing.com",
-    "Valor Econômico", "InfoMoney", "Exame", "NeoFeed", "Pipeline Capital",
-    "Agência Brasil", "CNN Brasil", "UOL Economia",
-    "Estadão", "O Estado de S. Paulo", "Folha de S.Paulo", "O Globo",
-    "Broadcast", "Agência Estado", "Seu Dinheiro", "MoneyTimes",
-    "Capital Aberto", "Investidor Institucional", "Ágora Investimentos",
-    "BTG Pactual", "Itaú BBA", "Bradesco BBI", "XP Investimentos",
-    "Suno Research", "Genial Investimentos",
-}
-TRUSTED_LOWER = {s.lower() for s in TRUSTED_SOURCES}
-
 CREDIT_TERMS = {
     "crédito", "dívida", "débito", "empréstimo", "financiamento", "captação",
     "spread", "juros", "taxa", "rating", "debenture", "debênture", "cri", "cra",
@@ -127,15 +114,11 @@ CREDIT_TERMS = {
 }
 
 
-def relevance_score(title: str, source: str, sector_keywords: list[str]) -> int:
+def relevance_score(title: str, sector_keywords: list[str]) -> int:
+    """Source trust is a hard pre-filter (see is_trusted()), not scored here —
+    every candidate reaching this function already passed that gate."""
     title_lower  = title.lower()
-    source_lower = source.lower()
     score = 0
-
-    if source_lower in TRUSTED_LOWER:
-        score += 3
-    elif any(t in source_lower for t in TRUSTED_LOWER):
-        score += 2
 
     kw_hits = sum(1 for kw in sector_keywords if kw.lower() in title_lower)
     score += min(kw_hits, 4)
@@ -236,8 +219,12 @@ def fetch_sector(sector_name: str, config: dict) -> list[dict]:
         if age_days > MAX_AGE_DAYS:
             continue
 
-        source = entry.get("source", {}).get("title", "Unknown")
-        score  = relevance_score(title, source, keywords)
+        source_info = entry.get("source", {})
+        if not is_trusted(source_info.get("href", "")):
+            continue  # hard gate: only whitelisted domains
+
+        source = source_info.get("title", "Unknown")
+        score  = relevance_score(title, keywords)
 
         candidates.append({
             "title":     title,

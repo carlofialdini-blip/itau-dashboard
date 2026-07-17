@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.plot.ly/plotly-2.26.0.min.js" charset="utf-8"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -151,6 +152,29 @@ div.hdr-mark { background: var(--accent); }
 .filter-select:focus { border-color: var(--accent); }
 .filter-select option { background: var(--bg); color: var(--text); }
 
+.filter-group-count { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--accent); }
+.src-search {
+  width: 100%; background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px;
+  color: var(--text); padding: 6px 8px; font-size: 12px; font-family: inherit; outline: none;
+  margin-bottom: 6px; transition: border-color .15s;
+}
+.src-search::placeholder { color: var(--text-muted); }
+.src-search:focus { border-color: var(--accent); }
+.src-list {
+  max-height: 220px; overflow-y: auto; border: 1px solid var(--border-2); border-radius: 6px; padding: 4px;
+}
+.src-item {
+  display: flex; align-items: center; gap: 7px; padding: 4px 6px; border-radius: 4px;
+  font-size: 12px; color: var(--text-dim); cursor: pointer; line-height: 1.3;
+}
+.src-item:hover { background: var(--bg-3); }
+.src-item input { cursor: pointer; accent-color: var(--accent); flex-shrink: 0; }
+.src-clear {
+  display: inline-block; margin-top: 6px; font-size: 11px; color: var(--accent);
+  cursor: pointer; user-select: none;
+}
+.src-clear:hover { text-decoration: underline; }
+
 /* China sector pills */
 .f-tag {
   display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 5px;
@@ -165,9 +189,28 @@ div.hdr-mark { background: var(--accent); }
 
 /* ── NEWS CARDS (shared) ── */
 .feed { background: var(--bg); }
-.feed-header { padding: 12px 24px 10px; border-bottom: 1px solid var(--border); background: var(--bg-2); }
+.feed-header {
+  padding: 12px 24px 10px; border-bottom: 1px solid var(--border); background: var(--bg-2);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
 .feed-count { font-size: 12px; color: var(--text-muted); }
 .feed-count strong { color: var(--text); font-weight: 600; }
+
+/* News Clipping: select articles → export Date/Title/Link to Excel */
+.clip-controls { display: flex; align-items: center; gap: 8px; }
+.clip-btn {
+  background: none; border: 1px solid var(--border-2); border-radius: 5px;
+  padding: 5px 11px; font-size: 11px; font-weight: 600; color: var(--text-dim);
+  cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+}
+.clip-btn:hover { background: var(--bg-3); color: var(--text); }
+.clip-btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.clip-btn-primary:hover { background: var(--accent); opacity: .88; color: #fff; }
+.clip-btn-primary:disabled { background: var(--bg-3); border-color: var(--border-2); color: var(--text-muted); cursor: not-allowed; opacity: 1; }
+.clip-btn-cancel { color: var(--text-muted); }
+.clip-active { display: flex; align-items: center; gap: 8px; }
+.clip-count-txt { font-size: 11px; color: var(--text-muted); }
+.clip-count-txt strong, .clip-count-txt #clipCount { color: var(--text); font-weight: 700; }
 
 .news-card {
   display: grid; grid-template-columns: 3px 1fr auto;
@@ -175,7 +218,12 @@ div.hdr-mark { background: var(--accent); }
   border-bottom: 1px solid var(--border);
   align-items: start; transition: background .1s; cursor: pointer;
 }
+#newsFeed.clip-mode .news-card { grid-template-columns: 20px 3px 1fr auto; }
 .news-card:hover { background: var(--bg-2); }
+.news-card.clip-selected { background: color-mix(in srgb, var(--accent) 8%, var(--bg)); }
+.clip-check { display: none; align-items: center; justify-content: center; align-self: stretch; }
+#newsFeed.clip-mode .clip-check { display: flex; }
+.clip-checkbox { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
 .card-bar { border-radius: 2px; align-self: stretch; min-height: 40px; width: 3px; }
 .card-body { min-width: 0; }
 .card-badges { display: flex; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; align-items: center; }
@@ -363,16 +411,17 @@ div.hdr-mark { background: var(--accent); }
   letter-spacing: .9px; color: var(--text-muted);
 }
 .mkt-updated { font-size: 10px; color: var(--text-muted); }
-.mkt-group { margin-bottom: 14px; }
+.mkt-group { margin-bottom: 20px; }
 .mkt-group:last-child { margin-bottom: 4px; }
 .mkt-group-lbl {
   font-size: 9px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 1.1px; color: var(--text-muted);
-  margin-bottom: 7px; padding-left: 1px;
+  margin-bottom: 9px; padding-left: 1px;
 }
 .mkt-grid {
-  display: grid; gap: 8px;
+  display: grid; gap: 10px;
 }
+.mkt-grid-wrap { gap: 14px; }
 .mkt-card {
   border: 1px solid var(--border); border-radius: 8px;
   overflow: hidden; background: var(--bg);
@@ -380,8 +429,8 @@ div.hdr-mark { background: var(--accent); }
 }
 .mkt-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.07); }
 .mkt-card-meta {
-  padding: 9px 11px 5px;
-  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 12px 6px;
+  display: flex; flex-direction: column; gap: 3px;
 }
 .mkt-card-hdr { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .mkt-card-name {
@@ -393,18 +442,19 @@ div.hdr-mark { background: var(--accent); }
   line-height: 1.2; color: var(--text);
   display: flex; align-items: baseline; gap: 5px;
 }
+.mkt-card-source {
+  font-size: 9px; font-weight: 400; color: var(--text-muted);
+  text-transform: none; letter-spacing: 0; line-height: 1.2;
+}
 .mkt-chg {
   font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums;
 }
 .mkt-chg.pos { color: var(--green); }
 .mkt-chg.neg { color: var(--cn-red); }
-.mkt-card-chart { height: 100px; }
+.mkt-card-chart { height: 110px; margin-top: 2px; }
 .mkt-no-data {
-  height: 100px; display: flex; align-items: center; justify-content: center;
+  height: 110px; display: flex; align-items: center; justify-content: center;
   font-size: 10px; color: var(--text-muted); font-style: italic;
-}
-.mkt-footnote {
-  font-size: 9px; color: var(--text-muted); margin-top: 6px; padding-left: 1px;
 }
 /* FX stat-only cards */
 .mkt-fx-card .mkt-card-meta { padding-bottom: 12px; }
@@ -501,7 +551,7 @@ div.hdr-mark { background: var(--accent); }
     {% for group_name, keys in cockpit_groups %}
     <div class="mkt-group">
       <div class="mkt-group-lbl">{{ group_name }}</div>
-      <div class="mkt-grid" style="grid-template-columns:repeat({{ keys|length }},1fr)">
+      <div class="mkt-grid{% if group_name == 'Commodities' %} mkt-grid-wrap{% endif %}" style="grid-template-columns:{% if group_name == 'Commodities' %}repeat(auto-fill, minmax(200px, 1fr)){% else %}repeat({{ keys|length }},1fr){% endif %}">
         {% for key in keys %}
         {% set item = cockpit[key] %}
         {% if item.show_chart %}
@@ -518,6 +568,7 @@ div.hdr-mark { background: var(--accent); }
               {{ item.current_fmt }}
               {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
             </div>
+            <div class="mkt-card-source">{{ item.source }}</div>
           </div>
           <div class="mkt-card-chart" id="mkt-{{ key }}"></div>
         </div>
@@ -529,6 +580,7 @@ div.hdr-mark { background: var(--accent); }
               {{ item.current_fmt }}
               {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
             </div>
+            <div class="mkt-card-source">{{ item.source }}</div>
             <button class="mkt-csv-btn" onclick="downloadCockpitCSV('{{ key }}')" title="Download historical series as CSV">&#8595; CSV</button>
           </div>
         </div>
@@ -537,8 +589,6 @@ div.hdr-mark { background: var(--accent); }
       </div>
     </div>
     {% endfor %}
-
-    <div class="mkt-footnote">* Suzano (SUZB3.SA) and Klabin (KLBN11.SA) used as Brazilian pulp &amp; paper proxies for BHKP / NBSK benchmarks.</div>
   </div>
 
 </div><!-- /cockpitPage -->
@@ -566,12 +616,33 @@ div.hdr-mark { background: var(--accent); }
         <div class="filter-group-title">Company</div>
         <select id="newsCompany" class="filter-select"><option value="">All companies</option>{% for c in news_companies %}<option>{{ c }}</option>{% endfor %}</select>
       </div>
+      <div class="filter-group">
+        <div class="filter-group-title">Source <span class="filter-group-count" id="newsSourceCount"></span></div>
+        <input type="text" id="newsSourceSearch" class="src-search" placeholder="Filter sources…" autocomplete="off">
+        <div class="src-list" id="newsSourceList">
+          {% for s in news_sources %}
+          <label class="src-item"><input type="checkbox" value="{{ s }}" class="src-checkbox"><span>{{ s }}</span></label>
+          {% endfor %}
+        </div>
+        <span class="src-clear" id="newsSourceClear">Clear selection</span>
+      </div>
     </aside>
     <main class="feed">
-      <div class="feed-header"><span class="feed-count"><strong id="newsFeedN">{{ news_total }}</strong> headlines</span></div>
+      <div class="feed-header">
+        <span class="feed-count"><strong id="newsFeedN">{{ news_total }}</strong> headlines</span>
+        <div class="clip-controls">
+          <button id="clipStartBtn" class="clip-btn" onclick="clipToggle()">Generate Clipping</button>
+          <span id="clipActive" class="clip-active" style="display:none">
+            <span class="clip-count-txt"><span id="clipCount">0</span> selected</span>
+            <button id="clipExportBtn" class="clip-btn clip-btn-primary" onclick="clipExport()" disabled>Export Excel</button>
+            <button class="clip-btn clip-btn-cancel" onclick="clipCancel()">Cancel</button>
+          </span>
+        </div>
+      </div>
       <div id="newsFeed">
         {% for a in news %}
-        <div class="news-card" data-country="{{ a.country }}" data-sec="{{ a.sector }}" data-co="{{ a.company or '' }}" data-q="{{ a.title|lower }} {{ a.sector|lower }} {{ (a.company or '')|lower }} {{ a.source|lower }}">
+        <div class="news-card" data-country="{{ a.country }}" data-sec="{{ a.sector }}" data-co="{{ a.company or '' }}" data-source="{{ a.source }}" data-q="{{ a.title|lower }} {{ a.sector|lower }} {{ (a.company or '')|lower }} {{ a.source|lower }}">
+          <label class="clip-check"><input type="checkbox" class="clip-checkbox"></label>
           <div class="card-bar" {% if a.color %}style="background:{{ a.color }}"{% else %}data-pf-sec="{{ a.sector }}"{% endif %}></div>
           <div class="card-body">
             <div class="card-badges">
@@ -674,7 +745,7 @@ div.hdr-mark { background: var(--accent); }
 </div>
 
 <footer class="footer">
-  <span>Portfolio Intelligence · Charts via <a href="https://chinadata.live" target="_blank">chinadata.live</a></span>
+  <span>Portfolio Intelligence · <span id="footerAttribution">Market data via Yahoo Finance, FRED &amp; ANBIMA</span></span>
   <span>Generated {{ generated }}</span>
 </footer>
 
@@ -696,11 +767,26 @@ const CREDIT_CHARTS   = {{ credit_charts_json }};
 // Charts tabs. Economic Data and Other Datasets still lazy-build on first
 // visit, same rAF-deferred pattern as before so Plotly measures real
 // dimensions after the panel is actually visible.
+// Per-page data-source attribution — each page pulls from a different mix,
+// so one blanket footer claim ("Charts via chinadata.live") was wrong on
+// every page except Other Datasets. Keep this in sync with what each page
+// actually fetches (see CLAUDE.md §4 for the audit that caught the original
+// mismatch).
+const FOOTER_ATTRIBUTION = {
+  cockpit:  'Market data via Yahoo Finance, FRED &amp; ANBIMA',
+  news:     'News via Google News &amp; GDELT',
+  econ:     'Charts via BCB &amp; chinadata.live',
+  calendar: 'Events via BCB, IBGE &amp; Yahoo Finance',
+  datasets: 'Charts via <a href="https://chinadata.live" target="_blank">chinadata.live</a>',
+};
+
 function showPage(name) {
   ['cockpit','news','econ','calendar','datasets'].forEach(p => {
     document.getElementById(p + 'Page').classList.toggle('active', p === name);
     document.getElementById('btn' + p.charAt(0).toUpperCase() + p.slice(1)).classList.toggle('active', p === name);
   });
+  const attrEl = document.getElementById('footerAttribution');
+  if (attrEl && FOOTER_ATTRIBUTION[name]) attrEl.innerHTML = FOOTER_ATTRIBUTION[name];
   if (name === 'econ' && !window._econChartsBuilt) {
     window._econChartsBuilt = true;
     requestAnimationFrame(() => requestAnimationFrame(() => buildEconCharts()));
@@ -746,15 +832,17 @@ function showPage(name) {
   });
 })();
 
-// ── News filtering (unified: Country / Sector / Company / search) ──────────
+// ── News filtering (unified: Country / Sector / Company / Source / search) ──
 (function () {
   const cards = Array.from(document.querySelectorAll('#newsFeed .news-card'));
   let country = '', sec = '', co = '', q = '';
+  let sources = new Set();
   function apply() {
     let n = 0;
     cards.forEach(c => {
       const show = (!country || c.dataset.country === country) && (!sec || c.dataset.sec === sec)
-                && (!co || c.dataset.co === co) && (!q || c.dataset.q.includes(q));
+                && (!co || c.dataset.co === co) && (!q || c.dataset.q.includes(q))
+                && (sources.size === 0 || sources.has(c.dataset.source));
       c.style.display = show ? '' : 'none';
       if (show) n++;
     });
@@ -765,7 +853,129 @@ function showPage(name) {
   document.getElementById('newsSector').addEventListener('change',  e => { sec     = e.target.value; apply(); });
   document.getElementById('newsCompany').addEventListener('change', e => { co      = e.target.value; apply(); });
   document.getElementById('newsSearch').addEventListener('input',   e => { q       = e.target.value.toLowerCase().trim(); apply(); });
+
+  // Source: multi-select checkboxes, plus a client-side search that just
+  // narrows which checkboxes are visible (doesn't touch article filtering).
+  const srcCheckboxes = Array.from(document.querySelectorAll('.src-checkbox'));
+  const srcCountEl    = document.getElementById('newsSourceCount');
+  function updateSourceCount() {
+    srcCountEl.textContent = sources.size ? `(${sources.size})` : '';
+  }
+  srcCheckboxes.forEach(cb => cb.addEventListener('change', () => {
+    sources = new Set(srcCheckboxes.filter(x => x.checked).map(x => x.value));
+    updateSourceCount();
+    apply();
+  }));
+  document.getElementById('newsSourceClear').addEventListener('click', () => {
+    srcCheckboxes.forEach(cb => cb.checked = false);
+    sources = new Set();
+    updateSourceCount();
+    apply();
+  });
+  document.getElementById('newsSourceSearch').addEventListener('input', e => {
+    const term = e.target.value.toLowerCase().trim();
+    document.querySelectorAll('#newsSourceList .src-item').forEach(item => {
+      item.style.display = !term || item.textContent.toLowerCase().includes(term) ? '' : 'none';
+    });
+  });
+
   cards.forEach(card => card.addEventListener('click', e => { if (e.target.tagName !== 'A') { const a = card.querySelector('a'); if (a) window.open(a.href,'_blank','noopener'); } }));
+})();
+
+// ── News Clipping: select articles → export Date/Title/Link to an .xlsx ────
+// One click to enter selection mode, one click per article, one click to
+// export — no confirmation dialog, no intermediate review screen. Selection
+// state lives on the DOM elements themselves (checked + a CSS class), so it
+// survives filter changes (cards are hidden via display:none, never removed)
+// and switching to another page and back.
+(function () {
+  const feed      = document.getElementById('newsFeed');
+  const startBtn  = document.getElementById('clipStartBtn');
+  const activeEl  = document.getElementById('clipActive');
+  const countEl   = document.getElementById('clipCount');
+  const exportBtn = document.getElementById('clipExportBtn');
+  const selected  = new Set();
+  let clipMode = false;
+
+  function updateUI() {
+    countEl.textContent = selected.size;
+    exportBtn.disabled = selected.size === 0;
+  }
+
+  function setSelected(card, on) {
+    const cb = card.querySelector('.clip-checkbox');
+    if (cb) cb.checked = on;
+    card.classList.toggle('clip-selected', on);
+    if (on) selected.add(card); else selected.delete(card);
+  }
+
+  window.clipToggle = function () {
+    clipMode = true;
+    feed.classList.add('clip-mode');
+    startBtn.style.display = 'none';
+    activeEl.style.display = '';
+    updateUI();
+  };
+
+  window.clipCancel = function () {
+    clipMode = false;
+    feed.classList.remove('clip-mode');
+    startBtn.style.display = '';
+    activeEl.style.display = 'none';
+    Array.from(selected).forEach(card => setSelected(card, false));
+    updateUI();
+  };
+
+  window.clipExport = function () {
+    if (selected.size === 0) return;
+    const rows = Array.from(selected).map(card => {
+      const a  = card.querySelector('.news-title a');
+      const ts = card.querySelector('.card-time');
+      const dt = ts && ts.dataset.ts ? new Date(ts.dataset.ts) : null;
+      return {
+        date:  dt && !isNaN(dt) ? dt : null,
+        title: a ? a.textContent.trim() : '',
+        link:  a ? a.href : '',
+      };
+    });
+    rows.sort((x, y) => (y.date ? y.date.getTime() : 0) - (x.date ? x.date.getTime() : 0));
+
+    const aoa = [['Date', 'Title', 'Link']];
+    rows.forEach(r => aoa.push([r.date ? r.date.toLocaleDateString('pt-BR') : '', r.title, r.link]));
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    rows.forEach((r, i) => {
+      if (!r.link) return;
+      const ref = XLSX.utils.encode_cell({ r: i + 1, c: 2 });
+      if (ws[ref]) ws[ref].l = { Target: r.link };
+    });
+    ws['!cols'] = [{ wch: 12 }, { wch: 90 }, { wch: 55 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Clipping');
+    XLSX.writeFile(wb, `news-clipping-${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+    clipCancel();
+  };
+
+  // Capture phase so this runs before the "open article" listener above,
+  // which is bound directly on each card (bubble phase) — stopPropagation()
+  // here keeps clip-mode clicks from ever reaching it.
+  feed.addEventListener('click', e => {
+    if (!clipMode) return;
+    const card = e.target.closest('.news-card');
+    if (!card) return;
+    if (e.target.classList.contains('clip-checkbox')) {
+      e.stopPropagation();
+      setSelected(card, e.target.checked);
+      updateUI();
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    setSelected(card, !selected.has(card));
+    updateUI();
+  }, true);
 })();
 
 // ── Shared icon SVGs for chart card action buttons ──────────────────────────
@@ -928,7 +1138,6 @@ function buildCatalog() {
   const cats = [...new Set(CHINA_CATALOG.map(d => d.category).filter(Boolean))].sort();
   const catSel = document.getElementById('catCategory');
   cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
-  document.getElementById('cnCatalogBadge').textContent = CHINA_CATALOG.length;
 
   let filtered = [...CHINA_CATALOG];
 

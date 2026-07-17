@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parent
 
 STEPS = [
     ("Portfolio news",    [sys.executable, str(ROOT / "scrapers" / "scraper.py")]),
+    ("Portfolio news (GDELT)", [sys.executable, str(ROOT / "scrapers" / "gdelt_scraper.py")]),
     ("China news",        [sys.executable, str(ROOT / "scrapers" / "china_scraper.py")]),
     ("Brazil news",       [sys.executable, str(ROOT / "scrapers" / "brazil_scraper.py")]),
     ("Credit news",       [sys.executable, str(ROOT / "scrapers" / "credit_scraper.py")]),

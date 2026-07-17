@@ -27,6 +27,7 @@ CHINA_EVENTS_FILE  = ROOT / "data" / "china_events.json"
 BRAZIL_NEWS_FILE   = ROOT / "data" / "brazil_news_cache.json"
 BRAZIL_EVENTS_FILE = ROOT / "data" / "brazil_events.json"
 CREDIT_NEWS_FILE   = ROOT / "data" / "credit_news_cache.json"
+GDELT_NEWS_FILE    = ROOT / "data" / "gdelt_news_cache.json"
 OUTPUT_HTML        = ROOT / "dashboard.html"
 TEMPLATE_FOLDER    = str(ROOT / "templates")
 TEMPLATE_FILE      = "dashboard_template.html"
@@ -554,7 +555,7 @@ def load_credit_news():
 
 
 def load_unified_news():
-    """Single feed combining Portfolio + Brazil + China + Credit news.
+    """Single feed combining Portfolio + Brazil + China + Credit + GDELT news.
 
     Every row gets a `country` tag (Brazil for Portfolio/Brazil/Credit —
     portfolio companies are all B3-listed and credit news is the Brazilian
@@ -592,14 +593,25 @@ def load_unified_news():
         r["origin"]  = "credit"
         r["company"] = None
 
-    rows = portfolio_rows + brazil_rows + china_rows + credit_rows
+    gdelt_rows = []
+    if os.path.exists(GDELT_NEWS_FILE):
+        with open(GDELT_NEWS_FILE, "r", encoding="utf-8") as f:
+            gdelt_raw = json.load(f)
+        gdelt_rows, _, _, _ = flatten_news(gdelt_raw)
+    for r in gdelt_rows:
+        r["source"]  = r.pop("provider")
+        r["country"] = "Brazil"
+        r["origin"]  = "gdelt"
+
+    rows = portfolio_rows + brazil_rows + china_rows + credit_rows + gdelt_rows
     rows.sort(
         key=lambda x: x["datetime"] if x["datetime"] else datetime.min.replace(tzinfo=timezone.utc),
         reverse=True,
     )
 
     sectors = sorted({r["sector"] for r in rows if r.get("sector")})
-    return rows, ["Brazil", "China"], sectors, sorted(companies)
+    sources = sorted({r["source"] for r in rows if r.get("source")})
+    return rows, ["Brazil", "China"], sectors, sorted(companies), sources
 
 
 def load_unified_events():
@@ -728,17 +740,31 @@ def fetch_credit_charts() -> dict:
 COCKPIT_GROUPS = [
     ("Equities",       ["sp500",   "ibov"]),
     ("Interest Rates", ["us10y",   "br10y"]),
-    ("Exchange Rates", ["brl_usd", "usd_cny", "brl_cny", "brl_eur"]),
-    ("Commodities",    ["brent",   "iron_ore", "suzano",  "klabin"]),
+    # Keys and labels both read base/quote = "how much QUOTE per 1 BASE",
+    # matching each ticker's real direction (e.g. usd_brl from USDBRL=X,
+    # which yfinance quotes as BRL-per-USD) — usd_brl was previously keyed
+    # "brl_usd" and labeled "BRL / USD", backwards from what it measured.
+    ("Exchange Rates", ["usd_brl", "usd_cny", "brl_cny", "eur_brl"]),
+    ("Commodities",    ["brent", "iron_ore", "nat_gas", "diesel", "gasoline",
+                         "gold", "silver", "copper", "aluminum", "nickel"]),
 ]
 
 
-def _ck_make(label, unit, color, series, show_chart=True):
-    """Build a cockpit item dict with pre-formatted current value and change."""
+def _ck_make(label, unit, color, series, show_chart=True, source="Yahoo Finance"):
+    """Build a cockpit item dict with pre-formatted current value and change.
+
+    `source` is shown in the UI as a hover tooltip on every card (see
+    templates/dashboard_template.html's ICON_INFO) — pass the *actual*
+    provider used, not a nominal default, when a fetch has a primary/fallback
+    path (e.g. Iron Ore, Aluminum: Yahoo Finance first, FRED if that's
+    empty). Never leave this as a guess; call sites determine it from which
+    fetch path actually returned data.
+    """
     cur  = series[-1]["y"] if series else None
     prev = series[-2]["y"] if len(series) >= 2 else None
     if cur is None:
         return {"label": label, "unit": unit, "color": color, "show_chart": show_chart,
+                "source": source,
                 "current_fmt": "N/A", "change_fmt": "", "change_dir": "", "data": []}
     if unit == "pts":
         cur_fmt = f"{cur:,.0f}"
@@ -757,6 +783,7 @@ def _ck_make(label, unit, color, series, show_chart=True):
     else:
         chg_fmt, chg_dir = "", ""
     return {"label": label, "unit": unit, "color": color, "show_chart": show_chart,
+            "source": source,
             "current_fmt": cur_fmt, "change_fmt": chg_fmt,
             "change_dir": chg_dir, "data": series}
 
@@ -787,11 +814,25 @@ def _ck_yf(ticker, period="1y"):
         return []
 
 
-def _ck_fred(series_id, max_pts=60):
-    """Fetch a FRED series via its public CSV endpoint (no API key needed)."""
+def _ck_fred(series_id, max_pts=60, timeout=15):
+    """Fetch a FRED series via its public CSV endpoint (no API key needed).
+
+    Deliberately does NOT use get_with_retry's default browser-spoofed
+    User-Agent (core.net_utils.DEFAULT_HEADERS, needed elsewhere to get past
+    Google News' bot detection) — confirmed live that fred.stlouisfed.org's
+    fredgraph.csv endpoint reliably *hangs to timeout* on that Chrome UA
+    (two separate get_with_retry attempts, ~58s total, both timing out) while
+    responding in under 1s to a plain/no-spoof User-Agent on the identical
+    URL. This isn't network flakiness — it's deterministic per-UA behavior,
+    most likely a CDN/WAF treating an unexecuted "browser" request as
+    suspicious. Passing an explicit non-browser UA here avoids it; retries
+    still exist for genuine transient failures, but no longer need inflating
+    to compensate for a UA-triggered hang.
+    """
     url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
     try:
-        r = get_with_retry(url, timeout=15)
+        r = get_with_retry(url, headers={"User-Agent": "python-requests (dashboard-generator)"},
+                            timeout=timeout)
         lines = r.text.strip().split("\n")
         pts = []
         for line in lines[1:]:
@@ -928,9 +969,9 @@ def fetch_cockpit_data():
         ("sp500",   "^GSPC",    "S&P 500",          "pts",     "#3b82f6", True),
         ("ibov",    "^BVSP",    "IBOVESPA",          "pts",     "#16a34a", True),
         ("us10y",   "^TNX",     "US 10Y Treasury",   "%",       "#ef4444", True),
-        ("brl_usd", "USDBRL=X", "BRL / USD",         "BRL",     "#8b5cf6", False),
+        ("usd_brl", "USDBRL=X", "USD / BRL",         "BRL",     "#8b5cf6", False),
         ("usd_cny", "USDCNY=X", "USD / CNY",         "CNY",     "#f59e0b", False),
-        ("brl_eur", "EURBRL=X", "EUR / BRL",         "BRL",     "#0284c7", False),
+        ("eur_brl", "EURBRL=X", "EUR / BRL",         "BRL",     "#0284c7", False),
         ("brent",   "BZ=F",     "Brent Crude",       "USD/bbl", "#1e293b", True),
     ]
     for key, ticker, label, unit, color, show_chart in yf_map:
@@ -942,7 +983,7 @@ def fetch_cockpit_data():
     print("    BRL / CNY...")
     brlcny = _ck_yf("BRLCNY=X")
     if not brlcny:
-        brl_s = {p["x"]: p["y"] for p in data["brl_usd"]["data"]}
+        brl_s = {p["x"]: p["y"] for p in data["usd_brl"]["data"]}
         cny_s = {p["x"]: p["y"] for p in data["usd_cny"]["data"]}
         brlcny = [{"x": d, "y": round(cny_s[d] / brl_s[d], 4)}
                   for d in sorted(set(brl_s) & set(cny_s))
@@ -951,26 +992,67 @@ def fetch_cockpit_data():
 
     # Brazil 10Y nominal yield via ANBIMA ETTJ (real curve, not Selic)
     print("    Brazil 10Y Treasury (ANBIMA ETTJ)...")
-    data["br10y"] = _ck_make("Brazil 10Y Treasury", "%", "#d97706", fetch_br10y())
+    data["br10y"] = _ck_make("Brazil 10Y Treasury", "%", "#d97706", fetch_br10y(),
+                              source="ANBIMA (ETTJ curve)")
 
-    # Iron ore: yfinance TIO=F, then FRED PIORECRUSD as fallback
+    # Iron ore: yfinance TIO=F, then FRED PIORECRUSD as fallback — source
+    # label reflects whichever path actually returned data, never a guess.
     print("    Iron Ore...")
-    iron = _ck_yf("TIO=F")
+    iron, iron_source = _ck_yf("TIO=F"), "Yahoo Finance"
     if not iron:
-        iron = _ck_fred("PIORECRUSD", max_pts=52)
-    data["iron_ore"] = _ck_make("Iron Ore 62% Fe", "USD/t", "#92400e", iron)
+        iron, iron_source = _ck_fred("PIORECRUSD", max_pts=52), "FRED"
+    data["iron_ore"] = _ck_make("Iron Ore 62% Fe", "USD/t", "#92400e", iron, source=iron_source)
 
-    # Pulp & paper proxies: Suzano (BHKP short fibre) and Klabin (NBSK long fibre) — B3-listed
-    print("    Suzano SUZB3.SA (BHKP proxy)...")
-    data["suzano"] = _ck_make("Suzano (BHKP proxy)", "BRL", "#059669", _ck_yf("SUZB3.SA"))
-    _time.sleep(0.3)
-    print("    Klabin KLBN11.SA (NBSK proxy)...")
-    data["klabin"]  = _ck_make("Klabin (NBSK proxy)",  "BRL", "#0d9488", _ck_yf("KLBN11.SA"))
+    # ── Additional commodities ───────────────────────────────────────────
+    # All verified live before wiring in (see CLAUDE.md §4) — no ticker here
+    # was guessed. Diesel and Gasoline use the standard commodity-market
+    # benchmark contracts for those fuels (NY Harbor ULSD and RBOB
+    # respectively), not a literal "diesel" or "gasoline" ticker, because
+    # those don't exist as such — labeled honestly, same spirit as the old
+    # Suzano/Klabin pulp proxies this replaces, just for genuinely
+    # correlated fuel grades rather than an unrelated equity.
+    commodity_map = [
+        ("nat_gas",  "NG=F",  "Natural Gas (Henry Hub)",   "USD/MMBtu", "#0ea5e9"),
+        ("diesel",   "HO=F",  "Diesel (NY Harbor ULSD)",   "USD/gal",   "#a16207"),
+        ("gasoline", "RB=F",  "Gasoline (RBOB)",           "USD/gal",   "#ea580c"),
+        ("gold",     "GC=F",  "Gold",                      "USD/oz",    "#ca8a04"),
+        ("silver",   "SI=F",  "Silver",                    "USD/oz",    "#94a3b8"),
+        ("copper",   "HG=F",  "Copper",                    "USD/lb",    "#c2410c"),
+    ]
+    for key, ticker, label, unit, color in commodity_map:
+        print(f"    {label}...")
+        data[key] = _ck_make(label, unit, color, _ck_yf(ticker))
+        _time.sleep(0.3)
+
+    # Aluminum: yfinance COMEX future first (confirmed real — "Aluminum
+    # Futures" on CMX, not a mislabeled/adjacent ticker), FRED as fallback.
+    print("    Aluminum...")
+    alum, alum_source = _ck_yf("ALI=F"), "Yahoo Finance"
+    if not alum:
+        alum, alum_source = _ck_fred("PALUMUSDM", max_pts=60), "FRED"
+    data["aluminum"] = _ck_make("Aluminum", "USD/t", "#64748b", alum, source=alum_source)
+
+    # Nickel: no free/clean Yahoo Finance ticker exists (checked LNI=F, NI=F,
+    # NID=F, NICKEL — all delisted/404). FRED's monthly global price series
+    # is the only real option; labeled as monthly since that's a materially
+    # different cadence from every other daily card here.
+    print("    Nickel (FRED, monthly)...")
+    data["nickel"] = _ck_make("Nickel", "USD/t", "#0f766e", _ck_fred("PNICKUSDM", max_pts=36),
+                               source="FRED (monthly)")
+
+    # Jet Fuel: deliberately not included. Yahoo Finance's only candidate
+    # ticker, JET=F, is not an outright price — it oscillates near zero
+    # (-0.48 to +0.50 over 6 months, confirmed by pulling the full series),
+    # meaning it's a differential/crack-spread contract, not a jet fuel
+    # price. No other free source was found. Rather than show a permanent
+    # "N/A" card (which reads as broken) or a mislabeled/duplicated number,
+    # the metric is simply omitted — see CLAUDE.md §4/§8 if a real source
+    # ever turns up.
 
     return data
 
 
-def render(unified_news, news_countries, news_sectors, news_companies,
+def render(unified_news, news_countries, news_sectors, news_companies, news_sources,
            unified_events, event_months,
            china_charts, china_catalog,
            brazil_charts,
@@ -983,12 +1065,13 @@ def render(unified_news, news_countries, news_sectors, news_companies,
         cockpit=cockpit,
         cockpit_groups=COCKPIT_GROUPS,
         cockpit_json=json.dumps(cockpit),
-        # News (unified: Portfolio + Brazil + China + Credit)
+        # News (unified: Portfolio + Brazil + China + Credit + GDELT)
         news=unified_news,
         news_total=len(unified_news),
         news_countries=news_countries,
         news_sectors=news_sectors,
         news_companies=news_companies,
+        news_sources=news_sources,
         # Calendar (unified: Brazil incl. Portfolio + China)
         events=unified_events,
         event_months=event_months,
@@ -1010,9 +1093,9 @@ def render(unified_news, news_countries, news_sectors, news_companies,
 
 
 def main():
-    print("Loading unified news feed (Portfolio + Brazil + China + Credit)...")
-    unified_news, news_countries, news_sectors, news_companies = load_unified_news()
-    print(f"  {len(unified_news)} articles — {len(news_sectors)} sectors, {len(news_companies)} companies")
+    print("Loading unified news feed (Portfolio + Brazil + China + Credit + GDELT)...")
+    unified_news, news_countries, news_sectors, news_companies, news_sources = load_unified_news()
+    print(f"  {len(unified_news)} articles — {len(news_sectors)} sectors, {len(news_companies)} companies, {len(news_sources)} sources")
 
     print("Loading unified events calendar (Brazil incl. Portfolio + China)...")
     unified_events, event_months = load_unified_events()
@@ -1033,7 +1116,7 @@ def main():
     print("Fetching cockpit market data...")
     cockpit = fetch_cockpit_data()
 
-    render(unified_news, news_countries, news_sectors, news_companies,
+    render(unified_news, news_countries, news_sectors, news_companies, news_sources,
            unified_events, event_months,
            china_charts, china_catalog,
            brazil_charts,
