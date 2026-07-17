@@ -28,6 +28,7 @@ BRAZIL_NEWS_FILE   = ROOT / "data" / "brazil_news_cache.json"
 BRAZIL_EVENTS_FILE = ROOT / "data" / "brazil_events.json"
 CREDIT_NEWS_FILE   = ROOT / "data" / "credit_news_cache.json"
 GDELT_NEWS_FILE    = ROOT / "data" / "gdelt_news_cache.json"
+FUEL_DATA_FILE     = ROOT / "data" / "fuel_data_cache.json"
 OUTPUT_HTML        = ROOT / "dashboard.html"
 TEMPLATE_FOLDER    = str(ROOT / "templates")
 TEMPLATE_FILE      = "dashboard_template.html"
@@ -1052,12 +1053,28 @@ def fetch_cockpit_data():
     return data
 
 
+def load_fuel_data() -> dict:
+    """Reads the ANP fuel-distribution snapshot written by scrapers/fuel_scraper.py.
+
+    That fetch runs as its own step in update_dashboard.py, fault-isolated
+    the same way every news scraper/event generator is — if it fails or
+    hasn't run yet, the Energy sub-page keeps whatever was cached last
+    rather than breaking the whole build.
+    """
+    empty = {"E": [], "P": [], "R": [], "M": [], "T": {}, "G": {}, "K": {}}
+    if not os.path.exists(FUEL_DATA_FILE):
+        return empty
+    with open(FUEL_DATA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def render(unified_news, news_countries, news_sectors, news_companies, news_sources,
            unified_events, event_months,
            china_charts, china_catalog,
            brazil_charts,
            credit_charts,
-           cockpit):
+           cockpit,
+           fuel_data):
     env      = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
     template = env.get_template(TEMPLATE_FILE)
     html = template.render(
@@ -1085,6 +1102,8 @@ def render(unified_news, news_countries, news_sectors, news_companies, news_sour
         num_econ_datasets=len(CHINA_DATASETS) + len(BRAZIL_DATASETS) + len(CREDIT_DATASETS),
         # Other Datasets (China catalog browser)
         china_catalog_json=json.dumps(china_catalog),
+        # Economic Data > Energy sub-page (ANP fuel-distribution data)
+        fuel_data_json=json.dumps(fuel_data),
         generated=datetime.now(BRASILIA_TZ).strftime("%Y-%m-%d %H:%M"),
         logo_data_uri=_logo_data_uri(),
     )
@@ -1116,12 +1135,17 @@ def main():
     print("Fetching cockpit market data...")
     cockpit = fetch_cockpit_data()
 
+    print("Loading fuel-distribution data (ANP)...")
+    fuel_data = load_fuel_data()
+    print(f"  {len(fuel_data.get('E', []))} companies, {len(fuel_data.get('T', {}))} monthly series points")
+
     render(unified_news, news_countries, news_sectors, news_companies, news_sources,
            unified_events, event_months,
            china_charts, china_catalog,
            brazil_charts,
            credit_charts,
-           cockpit)
+           cockpit,
+           fuel_data)
     print("\ndashboard.html generated successfully.")
 
 
