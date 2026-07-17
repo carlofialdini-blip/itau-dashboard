@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.plot.ly/plotly-2.26.0.min.js" charset="utf-8"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -503,6 +504,7 @@ div.hdr-mark { background: var(--accent); }
 {% set ICON_CSV %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>{% endset %}
 {% set ICON_PNG %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.4" fill="currentColor" stroke="none"/><path d="M21 15l-5-5-4 4-3-3-6 6"/></svg>{% endset %}
 {% set ICON_EXPAND %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>{% endset %}
+{% set ICON_PPTX %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M6.5 13l3-3.5 2.5 2 4.5-5"/></svg>{% endset %}
 
 <!-- ══ HEADER ══ -->
 <header class="hdr">
@@ -561,6 +563,7 @@ div.hdr-mark { background: var(--accent); }
               <span class="mkt-card-name">{{ item.label }}</span>
               <div class="mkt-card-actions">
                 <button class="chart-icon-btn" onclick="downloadCockpitCSV('{{ key }}')" title="Download CSV">{{ ICON_CSV }}</button>
+                <button class="chart-icon-btn" onclick="exportChartToPPTX(this, {source:'cockpit', key:'{{ key }}'})" title="Export to PowerPoint">{{ ICON_PPTX }}</button>
                 <button class="chart-icon-btn" onclick="chartExpand('mkt-{{ key }}', '{{ item.label|replace("'", "\\'") }}', function(){ downloadCockpitCSV('{{ key }}'); })" title="Expand chart">{{ ICON_EXPAND }}</button>
               </div>
             </div>
@@ -982,6 +985,7 @@ function showPage(name) {
 const ICON_PNG_SVG    = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.4" fill="currentColor" stroke="none"/><path d="M21 15l-5-5-4 4-3-3-6 6"/></svg>';
 const ICON_CSV_SVG    = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>';
 const ICON_EXPAND_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+const ICON_PPTX_SVG    = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M6.5 13l3-3.5 2.5 2 4.5-5"/></svg>';
 
 // ── Plotly layout (light theme) ───────────────────────────────────────────
 const LAYOUT = {
@@ -1052,6 +1056,7 @@ function buildEconCharts() {
     ...CREDIT_DATASETS.map(ds => ({ ...ds, _origin: 'credit', _chartsData: CREDIT_CHARTS,
       _csv: `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${ds.bcb_series}/dados?formato=csv` })),
   ];
+  window._econCombined = combined; // looked up by id in exportChartToPPTX()
 
   const container = document.getElementById('econCharts');
   const pending    = _buildGrid(combined, container, ds => {
@@ -1062,6 +1067,7 @@ function buildEconCharts() {
       <div class="chart-actions">
         <button class="chart-icon-btn" onclick="chartDownloadPng('plot-${ds.id}','${title}')" title="Download PNG">${ICON_PNG_SVG}</button>
         <a class="chart-icon-link" href="${ds._csv}" download title="Download CSV">${ICON_CSV_SVG}</a>
+        <button class="chart-icon-btn" onclick="exportChartToPPTX(this, {source:'econ', id:'${ds.id}'})" title="Export to PowerPoint">${ICON_PPTX_SVG}</button>
         <button class="chart-icon-btn" onclick="chartExpand('plot-${ds.id}','${title}','${ds._csv}')" title="Expand">${ICON_EXPAND_SVG}</button>
       </div>
     </div>
@@ -1173,6 +1179,114 @@ function buildCatalog() {
   catSel.addEventListener('change', render);
   render();
 }
+
+// ── Chart → PowerPoint export ───────────────────────────────────────────────
+// Slide layout/styling ported from the distribuicao-combustiveis-completo
+// project (light-gray slide background, thin divider line under the title,
+// Calibri throughout — the safe cross-platform PowerPoint default, since
+// this project's audience opens dashboard.html on both Mac and Windows and
+// a web font like Inter isn't guaranteed to be installed for editing).
+// That project builds one slide with 4 charts from raw category/volume
+// data (bar + doughnut); this is a per-chart export off a chart-icon-btn,
+// so it's one native, editable line chart per slide instead — same design
+// language, single-chart composition. Colors use each chart's own existing
+// color from this dashboard (COCKPIT_DATA / dataset sectorColor) rather
+// than that project's orange brand palette, so the exported slide always
+// matches what's on screen.
+function _pptxChartInfo(ref) {
+  if (ref.source === 'cockpit') {
+    const d = COCKPIT_DATA[ref.key];
+    if (!d || !d.data || !d.data.length) return null;
+    return {
+      title: d.label, unit: d.unit || '', source: d.source || '',
+      series: [{ name: d.label, color: (d.color || '#1e293b').replace('#', ''),
+                 points: d.data.map(p => ({ x: p.x, y: p.y })) }],
+    };
+  }
+  if (ref.source === 'econ') {
+    const ds = (window._econCombined || []).find(x => x.id === ref.id);
+    if (!ds) return null;
+    const meta = ds._chartsData[ds.id];
+    if (!meta || !meta.data || !meta.data.length) return null;
+    const fallbackColor = (ds.sectorColor || '#1e293b').replace('#', '');
+    if (ds.series) {
+      const series = ds.series.map(s => ({
+        name: s.label, color: (s.color || fallbackColor).replace('#', ''),
+        points: meta.data.map(p => ({ x: p.date, y: s.key in p ? p[s.key] : null })).filter(p => p.y !== null && p.y !== undefined),
+      })).filter(s => s.points.length);
+      if (!series.length) return null;
+      return { title: ds.title, unit: meta.unit || '', source: meta.source || '', series };
+    }
+    const points = meta.data.map(p => ({ x: p.date, y: p.value })).filter(p => p.y !== null && p.y !== undefined);
+    if (!points.length) return null;
+    return { title: ds.title, unit: meta.unit || '', source: meta.source || '',
+             series: [{ name: ds.title, color: fallbackColor, points }] };
+  }
+  return null;
+}
+
+window.exportChartToPPTX = async function (btn, ref) {
+  const info = _pptxChartInfo(ref);
+  if (!info) { alert('No data available to export for this chart yet.'); return; }
+  if (btn) btn.disabled = true;
+  try {
+    const pres = new PptxGenJS();
+    pres.layout = 'LAYOUT_16x9'; // 10in x 5.63in
+    const C_BG = 'F5F5F5', C_BORDER = 'CCCCCC', C_TITLE = '222222', C_MUTED = '888888', C_TEXT = '111111';
+
+    const s = pres.addSlide();
+    s.background = { color: C_BG };
+
+    s.addText(info.title, {
+      x: 0.4, y: 0.28, w: 7.3, h: 0.5,
+      fontSize: 20, bold: true, color: C_TITLE, fontFace: 'Calibri',
+    });
+    if (info.source) {
+      s.addText(`Source: ${info.source}`, {
+        x: 7.7, y: 0.34, w: 1.9, h: 0.3,
+        fontSize: 10, color: C_MUTED, align: 'right', fontFace: 'Calibri',
+      });
+    }
+    s.addShape(pres.shapes.LINE, { x: 0.4, y: 0.82, w: 9.2, h: 0, line: { color: C_BORDER, pt: 0.75 } });
+
+    const chartData = info.series.map(sr => ({
+      name: sr.name,
+      labels: sr.points.map(p => String(p.x)),
+      values: sr.points.map(p => p.y),
+    }));
+    const chartColors = info.series.map(sr => sr.color);
+    const manyLabels = chartData[0].labels.length > 20;
+
+    s.addChart(pres.charts.LINE, chartData, {
+      x: 0.4, y: 1.0, w: 9.2, h: 4.15,
+      showTitle: false,
+      showLegend: info.series.length > 1, legendPos: 'b', legendFontSize: 9, legendColor: C_TEXT,
+      lineSize: 2.25, lineDataSymbol: 'none', lineSmooth: false,
+      chartColors: chartColors,
+      catAxisLabelFontSize: 8, catAxisLabelColor: C_TEXT, catAxisLabelRotate: manyLabels ? 45 : 0,
+      valAxisLabelFontSize: 8, valAxisLabelColor: C_TEXT,
+      showValAxisTitle: !!info.unit, valAxisTitle: info.unit || '', valAxisTitleFontSize: 9, valAxisTitleColor: C_MUTED,
+      valGridLine: { color: 'E5E5E5', style: 'solid', size: 0.5 },
+      catGridLine: { style: 'none' },
+      catAxisLineShow: false, valAxisLineShow: false,
+      catAxisTickMark: 'none', valAxisTickMark: 'none',
+      plotAreaBorderColor: 'FFFFFF', plotAreaBorderPt: 0,
+    });
+
+    s.addText(`Portfolio Intelligence · Generated ${new Date().toLocaleDateString('pt-BR')}`, {
+      x: 0.4, y: 5.30, w: 6.0, h: 0.25,
+      fontSize: 8, color: C_MUTED, fontFace: 'Calibri',
+    });
+
+    const filename = info.title.replace(/[\\\/:*?"<>|]/g, '-') + '.pptx';
+    await pres.writeFile({ fileName: filename });
+  } catch (e) {
+    console.error('PPTX export failed:', e);
+    alert('Could not generate the PowerPoint file. Please try again.');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
 
 // ── Shared chart utilities (modal, PNG/CSV export) — used by every page ────────
 // One interaction model everywhere: charts render clean with no floating
