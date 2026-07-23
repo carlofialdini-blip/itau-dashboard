@@ -29,6 +29,8 @@ BRAZIL_EVENTS_FILE = ROOT / "data" / "brazil_events.json"
 CREDIT_NEWS_FILE   = ROOT / "data" / "credit_news_cache.json"
 GDELT_NEWS_FILE    = ROOT / "data" / "gdelt_news_cache.json"
 FUEL_DATA_FILE     = ROOT / "data" / "fuel_data_cache.json"
+PULP_PAPER_DATA_FILE = ROOT / "data" / "pulp_paper_cache.json"
+MINING_DATA_FILE   = ROOT / "data" / "mining_cache.json"
 OUTPUT_HTML        = ROOT / "dashboard.html"
 TEMPLATE_FOLDER    = str(ROOT / "templates")
 TEMPLATE_FILE      = "dashboard_template.html"
@@ -1053,6 +1055,105 @@ def fetch_cockpit_data():
     return data
 
 
+# ── Pulp & Paper: public-company performance ────────────────────────────────
+# FAOSTAT (below) is annual and necessarily ~1 year behind — there is no
+# monthly/quarterly version of that dataset, industry-wide. This is the
+# recency complement: live daily share prices for the major publicly-traded
+# pulp & paper companies, via the same yfinance path Cockpit already uses.
+# Every ticker below was verified live (yf.Ticker().info's shortName/
+# quoteType/currency, not assumed) before being wired in — same standard as
+# the Cockpit commodities audit (CLAUDE.md §4): TSX-listed Canfor Pulp
+# Products (CFX.TO) was dropped after its live lookup returned no data at
+# all (name=None) — confirmed delisted, it was taken private in 2023, not a
+# transient fetch failure.
+PULP_COMPANIES = [
+    ("SUZB3.SA",  "Suzano",                    "Brazil"),
+    ("KLBN11.SA", "Klabin",                    "Brazil"),
+    ("IP",        "International Paper",       "United States"),
+    ("SW",        "Smurfit WestRock",          "Ireland / United States"),
+    ("UPM.HE",    "UPM-Kymmene",               "Finland"),
+    ("STERV.HE",  "Stora Enso",                "Finland"),
+    ("MNDI.L",    "Mondi",                     "UK / South Africa"),
+    ("2689.HK",   "Nine Dragons Paper",        "China"),
+    ("3861.T",    "Oji Holdings",              "Japan"),
+    ("3863.T",    "Nippon Paper Industries",   "Japan"),
+    ("SPPJY",     "Sappi",                     "South Africa"),
+    ("SON",       "Sonoco Products",           "United States"),
+    ("PKG",       "Packaging Corp of America", "United States"),
+    ("METSB.HE",  "Metsä Board",               "Finland"),
+]
+
+
+def fetch_pulp_companies() -> list:
+    import time as _time
+    print("  Fetching pulp & paper public-company performance...")
+    result = []
+    for ticker, name, country in PULP_COMPANIES:
+        series = _ck_yf(ticker, period="6mo")
+        item = _ck_make(name, "", "#2563eb", series, show_chart=True, source="Yahoo Finance")
+        item["ticker"] = ticker
+        item["country"] = country
+        result.append(item)
+        print(f"    {name} ({ticker}): {item['current_fmt'] or 'N/A'}")
+        _time.sleep(0.3)
+    return result
+
+
+# ── Mining: public-company performance ──────────────────────────────────────
+# Same recency-complement role as PULP_COMPANIES: BGS's own data (below) is
+# annual, this is the live daily layer on top of it. Every ticker verified
+# live before wiring in — same standard as Pulp & Paper's audit. Caught one
+# real mislabel this way: the obvious "GOLD" ticker resolves to an unrelated
+# company ("Gold.com, Inc."), not Barrick — Barrick Mining Corp (formerly
+# Barrick Gold) trades as "B" on the NYSE since its 2025 rename, confirmed
+# via yf.Ticker().info's shortName, not assumed from the old familiar symbol.
+MINING_COMPANIES = [
+    ("VALE",        "Vale",                      "Brazil"),
+    ("BHP",         "BHP Group",                 "Australia"),
+    ("RIO",         "Rio Tinto",                 "UK / Australia"),
+    ("GLEN.L",      "Glencore",                  "Switzerland / UK"),
+    ("FCX",         "Freeport-McMoRan",          "United States"),
+    ("AAL.L",       "Anglo American",            "UK / South Africa"),
+    ("NEM",         "Newmont",                   "United States"),
+    ("B",           "Barrick Mining",            "Canada"),
+    ("SCCO",        "Southern Copper",           "United States / Peru"),
+    ("TECK",        "Teck Resources",            "Canada"),
+    ("FMG.AX",      "Fortescue",                 "Australia"),
+    ("GMEXICOB.MX", "Grupo Mexico",              "Mexico"),
+    ("AA",          "Alcoa",                     "United States"),
+    ("MT",          "ArcelorMittal",             "Luxembourg"),
+    ("CLF",         "Cleveland-Cliffs",          "United States"),
+]
+
+
+def fetch_mining_companies() -> list:
+    import time as _time
+    print("  Fetching mining public-company performance...")
+    result = []
+    for ticker, name, country in MINING_COMPANIES:
+        series = _ck_yf(ticker, period="6mo")
+        item = _ck_make(name, "", "#f59e0b", series, show_chart=True, source="Yahoo Finance")
+        item["ticker"] = ticker
+        item["country"] = country
+        result.append(item)
+        print(f"    {name} ({ticker}): {item['current_fmt'] or 'N/A'}")
+        _time.sleep(0.3)
+    return result
+
+
+def load_mining_data() -> dict:
+    """Reads the BGS mining snapshot written by scrapers/mining_scraper.py.
+
+    Same fault-isolation as load_pulp_paper_data(): honest all-empty shape
+    if the step hasn't run yet or failed.
+    """
+    empty = {"years": [], "world": {}, "countries": {}, "concentration": {}, "items": {}}
+    if not os.path.exists(MINING_DATA_FILE):
+        return empty
+    with open(MINING_DATA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def load_fuel_data() -> dict:
     """Reads the ANP fuel-distribution snapshot written by scrapers/fuel_scraper.py.
 
@@ -1068,13 +1169,33 @@ def load_fuel_data() -> dict:
         return json.load(f)
 
 
+def load_pulp_paper_data() -> dict:
+    """Reads the FAOSTAT pulp/paper snapshot written by
+    scrapers/pulp_paper_scraper.py.
+
+    Same fault-isolation as load_fuel_data(): this fetch runs as its own
+    step in update_dashboard.py, and an honest all-empty shape is returned
+    if it hasn't run yet or failed, rather than breaking the whole build.
+    """
+    empty = {"years": [], "world": {}, "countries": {}, "concentration": {},
+              "recycled_rate": {"world": {}, "countries": {}},
+              "structural_mix": {"pulp_by_type": {}, "paper_by_type": {}},
+              "items": {}}
+    if not os.path.exists(PULP_PAPER_DATA_FILE):
+        return empty
+    with open(PULP_PAPER_DATA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def render(unified_news, news_countries, news_sectors, news_companies, news_sources,
            unified_events, event_months,
            china_charts, china_catalog,
            brazil_charts,
            credit_charts,
            cockpit,
-           fuel_data):
+           fuel_data,
+           pulp_paper_data, pulp_news, pulp_companies,
+           mining_data, mining_news, mining_companies):
     env      = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
     template = env.get_template(TEMPLATE_FILE)
     html = template.render(
@@ -1104,6 +1225,14 @@ def render(unified_news, news_countries, news_sectors, news_companies, news_sour
         china_catalog_json=json.dumps(china_catalog),
         # Economic Data > Energy sub-page (ANP fuel-distribution data)
         fuel_data_json=json.dumps(fuel_data),
+        # Economic Data > Pulp & Paper sub-page (FAOSTAT data + linked news)
+        pulp_paper_json=json.dumps(pulp_paper_data),
+        pulp_news=pulp_news,
+        pulp_companies_json=json.dumps(pulp_companies),
+        # Economic Data > Mining sub-page (BGS data + linked news)
+        mining_json=json.dumps(mining_data),
+        mining_news=mining_news,
+        mining_companies_json=json.dumps(mining_companies),
         generated=datetime.now(BRASILIA_TZ).strftime("%Y-%m-%d %H:%M"),
         logo_data_uri=_logo_data_uri(),
     )
@@ -1139,13 +1268,34 @@ def main():
     fuel_data = load_fuel_data()
     print(f"  {len(fuel_data.get('E', []))} companies, {len(fuel_data.get('T', {}))} monthly series points")
 
+    print("Loading pulp & paper data (FAOSTAT)...")
+    pulp_paper_data = load_pulp_paper_data()
+    print(f"  {len(pulp_paper_data.get('countries', {}))} countries, "
+          f"{len(pulp_paper_data.get('years', []))} years")
+    # Reuses the unified news feed already loaded above — brazil_scraper.py
+    # already has a "Pulp & Paper" sector (Suzano/Klabin/Bracell/Eldorado,
+    # celulose/kraft/tissue keywords), so this is a filter, not a new fetch.
+    pulp_news = [a for a in unified_news if a.get("sector") == "Pulp & Paper"][:20]
+    pulp_companies = fetch_pulp_companies()
+
+    print("Loading mining data (BGS)...")
+    mining_data = load_mining_data()
+    print(f"  {len(mining_data.get('countries', {}))} countries, "
+          f"{len(mining_data.get('years', []))} years")
+    # Reuses the unified news feed already loaded above — brazil_scraper.py
+    # already has a "Mining & Steel" sector, so this is a filter, not a new fetch.
+    mining_news = [a for a in unified_news if a.get("sector") == "Mining & Steel"][:20]
+    mining_companies = fetch_mining_companies()
+
     render(unified_news, news_countries, news_sectors, news_companies, news_sources,
            unified_events, event_months,
            china_charts, china_catalog,
            brazil_charts,
            credit_charts,
            cockpit,
-           fuel_data)
+           fuel_data,
+           pulp_paper_data, pulp_news, pulp_companies,
+           mining_data, mining_news, mining_companies)
     print("\ndashboard.html generated successfully.")
 
 

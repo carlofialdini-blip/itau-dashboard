@@ -306,6 +306,26 @@ div.hdr-mark { background: var(--accent); }
 .chart-error  { color: var(--cn-red) !important; }
 .chart-footer { font-size: 10px; color: var(--text-muted); margin-top: 6px; }
 
+/* ── Shared ranking-table look (Pulp & Paper today; any future page needing
+   a sortable/rankable data table should reuse this rather than duplicating
+   a table stylesheet per page, the way #econEnergyView's table CSS was
+   duplicated the first time this project needed one) ── */
+.data-table-wrap { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data-table thead th {
+  background: var(--bg-3); color: var(--text-muted); font-weight: 600; padding: 8px 12px;
+  text-align: right; font-size: 10px; text-transform: uppercase; letter-spacing: .5px;
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.data-table thead th:first-child, .data-table thead th:nth-child(2) { text-align: left; }
+.data-table tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+.data-table tbody tr:hover { background: var(--bg-2); }
+.data-table td { padding: 7px 12px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.data-table td:first-child { text-align: left; color: var(--text-muted); }
+.data-table td:nth-child(2) { text-align: left; font-weight: 500; }
+.data-table .var-pos { color: var(--green); }
+.data-table .var-neg { color: var(--cn-red); }
+
 /* ── Shared chart action buttons (PNG / CSV / Expand) — same everywhere ── */
 .chart-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .chart-icon-btn, .chart-icon-link {
@@ -657,6 +677,91 @@ div.hdr-mark { background: var(--accent); }
 #econEnergyView #mse-slider input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); cursor: pointer; pointer-events: auto; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
 #econEnergyView #mse-slider input[type=range]::-webkit-slider-runnable-track { background: transparent; height: 28px; }
 #econEnergyView #mse-slider input[type=range]::-moz-range-track { background: transparent; height: 28px; }
+
+/* ── Economic Data / Pulp & Paper sub-page ──────────────────────────────
+   Built fresh in this dashboard's own palette (unlike Energy, nothing here
+   was ported from another project, so no --var remap is needed — every
+   rule below reads the real root custom properties directly). Reuses the
+   dashboard-wide .chart-grid/.chart-card (Economic Data's existing chart
+   card look), .f-tag/.f-dot (the pill filter already used by Economic
+   Data's source filter and Other Datasets' category filter), and the new
+   shared .data-table above for its 3 ranking tables — only the KPI row and
+   filter bar are new, page-specific CSS. */
+#econPulpView .pulp-filters {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 14px 24px; background: var(--bg-2); border-bottom: 1px solid var(--border);
+}
+#econPulpView .pulp-filters .f-tag { margin-bottom: 0; }
+#econPulpView .pulp-year-select {
+  background: var(--bg); border: 1px solid var(--border-2); color: var(--text);
+  padding: 5px 10px; border-radius: 6px; font-family: inherit; font-size: 12px; cursor: pointer;
+}
+#econPulpView .pulp-filter-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .6px; }
+#econPulpView .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; padding: 16px 24px 0; }
+#econPulpView .kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; position: relative; overflow: hidden; }
+#econPulpView .kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+#econPulpView .kpi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 500; margin-bottom: 8px; }
+#econPulpView .kpi-value { font-size: 24px; font-weight: 700; color: var(--text); letter-spacing: -.5px; line-height: 1; font-variant-numeric: tabular-nums; }
+#econPulpView .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+#econPulpView .kpi-sub.pos { color: var(--green); }
+#econPulpView .kpi-sub.neg { color: var(--cn-red); }
+#econPulpView .pulp-section { padding: 20px 24px 4px; }
+#econPulpView .pulp-section-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+#econPulpView .pulp-section-sub { font-size: 11.5px; color: var(--text-muted); margin-bottom: 12px; }
+#econPulpView .pulp-tables { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; padding: 0 24px 20px; }
+#econPulpView .pulp-table-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+#econPulpView .pulp-table-title { font-size: 11.5px; font-weight: 700; color: var(--text); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+#econPulpView .pulp-news-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; margin: 0 24px 24px; overflow: hidden; }
+#econPulpView .pulp-news-hdr { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg-2); }
+#econPulpView .pulp-news-hdr-title { font-size: 12.5px; font-weight: 700; color: var(--text); }
+#econPulpView .pulp-news-hdr a { font-size: 11px; color: var(--accent); text-decoration: none; font-weight: 600; }
+#econPulpView .pulp-news-hdr a:hover { text-decoration: underline; }
+#econPulpView .pulp-news-row { display: flex; gap: 10px; align-items: baseline; padding: 9px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+#econPulpView .pulp-news-row:last-child { border-bottom: none; }
+#econPulpView .pulp-news-row a { color: var(--text); text-decoration: none; font-weight: 500; flex: 1; min-width: 0; }
+#econPulpView .pulp-news-row a:hover { color: var(--accent); }
+#econPulpView .pulp-news-meta { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+#econPulpView .pulp-empty { padding: 24px; text-align: center; color: var(--text-muted); font-size: 12.5px; }
+
+/* ── Economic Data / Mining sub-page — same scoped-block pattern as Pulp &
+   Paper immediately above (fresh CSS, no port/remap needed; .data-table/
+   .chart-grid/.chart-card/.mkt-card/.f-tag are already shared, reused as-is
+   in the markup below without redeclaring them here). ── */
+#econMiningView .mining-filters {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 14px 24px; background: var(--bg-2); border-bottom: 1px solid var(--border);
+}
+#econMiningView .mining-filters .f-tag { margin-bottom: 0; }
+#econMiningView .mining-year-select {
+  background: var(--bg); border: 1px solid var(--border-2); color: var(--text);
+  padding: 5px 10px; border-radius: 6px; font-family: inherit; font-size: 12px; cursor: pointer;
+}
+#econMiningView .mining-filter-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .6px; }
+#econMiningView .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; padding: 16px 24px 0; }
+#econMiningView .kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; position: relative; overflow: hidden; }
+#econMiningView .kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+#econMiningView .kpi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 500; margin-bottom: 8px; }
+#econMiningView .kpi-value { font-size: 24px; font-weight: 700; color: var(--text); letter-spacing: -.5px; line-height: 1; font-variant-numeric: tabular-nums; }
+#econMiningView .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+#econMiningView .kpi-sub.pos { color: var(--green); }
+#econMiningView .kpi-sub.neg { color: var(--cn-red); }
+#econMiningView .mining-section { padding: 20px 24px 4px; }
+#econMiningView .mining-section-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+#econMiningView .mining-section-sub { font-size: 11.5px; color: var(--text-muted); margin-bottom: 12px; }
+#econMiningView .mining-tables { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; padding: 0 24px 20px; }
+#econMiningView .mining-table-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+#econMiningView .mining-table-title { font-size: 11.5px; font-weight: 700; color: var(--text); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+#econMiningView .mining-news-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; margin: 0 24px 24px; overflow: hidden; }
+#econMiningView .mining-news-hdr { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg-2); }
+#econMiningView .mining-news-hdr-title { font-size: 12.5px; font-weight: 700; color: var(--text); }
+#econMiningView .mining-news-hdr a { font-size: 11px; color: var(--accent); text-decoration: none; font-weight: 600; }
+#econMiningView .mining-news-hdr a:hover { text-decoration: underline; }
+#econMiningView .mining-news-row { display: flex; gap: 10px; align-items: baseline; padding: 9px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+#econMiningView .mining-news-row:last-child { border-bottom: none; }
+#econMiningView .mining-news-row a { color: var(--text); text-decoration: none; font-weight: 500; flex: 1; min-width: 0; }
+#econMiningView .mining-news-row a:hover { color: var(--accent); }
+#econMiningView .mining-news-meta { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+#econMiningView .mining-empty { padding: 24px; text-align: center; color: var(--text-muted); font-size: 12.5px; }
 </style>
 </head>
 <body>
@@ -836,6 +941,8 @@ div.hdr-mark { background: var(--accent); }
   <div class="econ-subnav">
     <button class="econ-subnav-btn active" id="econSubBtnOverview" onclick="econSubnavShow('overview')">Overview</button>
     <button class="econ-subnav-btn" id="econSubBtnEnergy" onclick="econSubnavShow('energy')">⛽ Energy — Fuel Distribution</button>
+    <button class="econ-subnav-btn" id="econSubBtnPulp" onclick="econSubnavShow('pulp')">🪵 Pulp &amp; Paper</button>
+    <button class="econ-subnav-btn" id="econSubBtnMining" onclick="econSubnavShow('mining')">⛏️ Mining</button>
   </div>
 
   <div id="econOverviewView">
@@ -1015,6 +1122,148 @@ div.hdr-mark { background: var(--accent); }
 
     </div>
   </div>
+
+  <div id="econPulpView" style="display:none">
+    <div class="pulp-filters">
+      <span class="pulp-filter-label">Category</span>
+      <span class="f-tag active" data-pulp-cat="pulp"><span class="f-dot" style="background:#2563eb"></span><span>Pulp</span></span>
+      <span class="f-tag" data-pulp-cat="paper"><span class="f-dot" style="background:#16a34a"></span><span>Paper &amp; Paperboard</span></span>
+      <span class="f-tag" data-pulp-cat="recovered"><span class="f-dot" style="background:#d97706"></span><span>Recovered Fibre</span></span>
+      <span class="pulp-filter-label" style="margin-left:12px">Ranking year</span>
+      <select id="pulpYearSelect" class="pulp-year-select"></select>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-label">Global Pulp Production</div><div class="kpi-value" id="pulp-kpi-pulp">—</div><div class="kpi-sub" id="pulp-kpi-pulp-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Global Paper Production</div><div class="kpi-value" id="pulp-kpi-paper">—</div><div class="kpi-sub" id="pulp-kpi-paper-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Top Producer<span id="pulp-kpi-top-cat"></span></div><div class="kpi-value" id="pulp-kpi-top" style="font-size:16px;letter-spacing:-.3px">—</div><div class="kpi-sub" id="pulp-kpi-top-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Recycled-Fibre Utilization</div><div class="kpi-value" id="pulp-kpi-recycled">—</div><div class="kpi-sub" id="pulp-kpi-recycled-sub">Recovered paper / total fibre furnish, world</div></div>
+    </div>
+
+    <div class="pulp-section">
+      <div class="pulp-section-title">Public Company Performance</div>
+      <div class="pulp-section-sub">Live daily share prices — FAOSTAT's own data is annual (below), so this is the recency complement: the market's real-time read on the sector, updated every refresh instead of once a year.</div>
+    </div>
+    <div class="mkt-group">
+      <div class="mkt-grid mkt-grid-wrap" id="pulpCompanies" style="grid-template-columns:repeat(auto-fill, minmax(200px, 1fr))"><!-- built by JS --></div>
+    </div>
+
+    <div class="pulp-section">
+      <div class="pulp-section-title">Production, Trade &amp; Industry Structure</div>
+      <div class="pulp-section-sub">World totals, 1961–{{ generated[:4] }} where reported. Source: FAO FAOSTAT (Forestry Production and Trade).</div>
+    </div>
+    <div id="pulpCharts"><!-- built by JS --></div>
+
+    <div class="pulp-section">
+      <div class="pulp-section-title">Country Rankings</div>
+      <div class="pulp-section-sub">Ranked by the category and year selected above. Share is of that year's FAO world total for the category.</div>
+    </div>
+    <div class="pulp-tables">
+      <div class="pulp-table-card">
+        <div class="pulp-table-title"><span>Top Producers</span><button class="chart-icon-btn" onclick="pulpTableCSV('producers')" title="Download CSV">{{ ICON_CSV }}</button></div>
+        <div class="data-table-wrap"><table class="data-table" id="pulpTableProducers"></table></div>
+      </div>
+      <div class="pulp-table-card">
+        <div class="pulp-table-title"><span>Top Exporters</span><button class="chart-icon-btn" onclick="pulpTableCSV('exporters')" title="Download CSV">{{ ICON_CSV }}</button></div>
+        <div class="data-table-wrap"><table class="data-table" id="pulpTableExporters"></table></div>
+      </div>
+      <div class="pulp-table-card">
+        <div class="pulp-table-title"><span>Top Importers</span><button class="chart-icon-btn" onclick="pulpTableCSV('importers')" title="Download CSV">{{ ICON_CSV }}</button></div>
+        <div class="data-table-wrap"><table class="data-table" id="pulpTableImporters"></table></div>
+      </div>
+    </div>
+
+    <div class="pulp-news-card">
+      <div class="pulp-news-hdr">
+        <span class="pulp-news-hdr-title">Recent Pulp &amp; Paper Sector News</span>
+        <a href="#" onclick="pulpGoToSectorNews(); return false;">See all in News →</a>
+      </div>
+      {% for a in pulp_news %}
+      <div class="pulp-news-row">
+        <a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a>
+        <span class="pulp-news-meta">{{ a.source }} · {{ a.published_short }}</span>
+      </div>
+      {% else %}
+      <div class="pulp-empty">No recent Pulp &amp; Paper sector headlines in the current News window.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div id="econMiningView" style="display:none">
+    <div class="mining-filters">
+      <span class="mining-filter-label">Commodity</span>
+      <span class="f-tag active" data-mining-cat="iron_ore"><span class="f-dot" style="background:#64748b"></span><span>Iron Ore</span></span>
+      <span class="f-tag" data-mining-cat="crude_steel"><span class="f-dot" style="background:#475569"></span><span>Crude Steel</span></span>
+      <span class="f-tag" data-mining-cat="copper"><span class="f-dot" style="background:#ea580c"></span><span>Copper (Mine)</span></span>
+      <span class="f-tag" data-mining-cat="copper_refined"><span class="f-dot" style="background:#f97316"></span><span>Copper (Refined)</span></span>
+      <span class="f-tag" data-mining-cat="gold"><span class="f-dot" style="background:#d97706"></span><span>Gold</span></span>
+      <span class="f-tag" data-mining-cat="silver"><span class="f-dot" style="background:#94a3b8"></span><span>Silver</span></span>
+      <span class="f-tag" data-mining-cat="nickel"><span class="f-dot" style="background:#0f766e"></span><span>Nickel</span></span>
+      <span class="f-tag" data-mining-cat="zinc"><span class="f-dot" style="background:#0891b2"></span><span>Zinc</span></span>
+      <span class="f-tag" data-mining-cat="lead"><span class="f-dot" style="background:#7c3aed"></span><span>Lead</span></span>
+      <span class="f-tag" data-mining-cat="tin"><span class="f-dot" style="background:#be185d"></span><span>Tin</span></span>
+      <span class="f-tag" data-mining-cat="bauxite"><span class="f-dot" style="background:#92400e"></span><span>Bauxite</span></span>
+      <span class="f-tag" data-mining-cat="aluminium"><span class="f-dot" style="background:#0284c7"></span><span>Aluminium</span></span>
+      <span class="f-tag" data-mining-cat="manganese"><span class="f-dot" style="background:#65a30d"></span><span>Manganese</span></span>
+      <span class="mining-filter-label" style="margin-left:12px">Ranking year</span>
+      <select id="miningYearSelect" class="mining-year-select"></select>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-label">Global Production<span id="mining-kpi-cat"></span></div><div class="kpi-value" id="mining-kpi-prod">—</div><div class="kpi-sub" id="mining-kpi-prod-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Top Producer</div><div class="kpi-value" id="mining-kpi-top" style="font-size:16px;letter-spacing:-.3px">—</div><div class="kpi-sub" id="mining-kpi-top-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Concentration (HHI)</div><div class="kpi-value" id="mining-kpi-hhi">—</div><div class="kpi-sub" id="mining-kpi-hhi-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Top-4 Share (CR4)</div><div class="kpi-value" id="mining-kpi-cr4">—</div><div class="kpi-sub" id="mining-kpi-cr4-sub">Combined share of the 4 largest producers</div></div>
+    </div>
+
+    <div class="mining-section">
+      <div class="mining-section-title">Public Company Performance</div>
+      <div class="mining-section-sub">Live daily share prices — BGS's own data is annual (below), so this is the recency complement: the market's real-time read on the sector, updated every refresh instead of once a year.</div>
+    </div>
+    <div class="mkt-group">
+      <div class="mkt-grid mkt-grid-wrap" id="miningCompanies" style="grid-template-columns:repeat(auto-fill, minmax(200px, 1fr))"><!-- built by JS --></div>
+    </div>
+
+    <div class="mining-section">
+      <div class="mining-section-title">Production by Commodity</div>
+      <div class="mining-section-sub">World totals, 1970–{{ generated[:4] }} where reported, plus production concentration across the headline commodities. Source: British Geological Survey (World Mineral Statistics).</div>
+    </div>
+    <div id="miningCharts"><!-- built by JS --></div>
+
+    <div class="mining-section">
+      <div class="mining-section-title">Country Rankings</div>
+      <div class="mining-section-sub">Ranked by the commodity and year selected above. Share is of that year's summed world total for the commodity.</div>
+    </div>
+    <div class="mining-tables">
+      <div class="mining-table-card">
+        <div class="mining-table-title"><span>Top Producers</span><button class="chart-icon-btn" onclick="miningTableCSV('producers')" title="Download CSV">{{ ICON_CSV }}</button></div>
+        <div class="data-table-wrap"><table class="data-table" id="miningTableProducers"></table></div>
+      </div>
+      <div class="mining-table-card">
+        <div class="mining-table-title"><span>Top Exporters</span><button class="chart-icon-btn" onclick="miningTableCSV('exporters')" title="Download CSV">{{ ICON_CSV }}</button></div>
+        <div class="data-table-wrap"><table class="data-table" id="miningTableExporters"></table></div>
+      </div>
+      <div class="mining-table-card">
+        <div class="mining-table-title"><span>Top Importers</span><button class="chart-icon-btn" onclick="miningTableCSV('importers')" title="Download CSV">{{ ICON_CSV }}</button></div>
+        <div class="data-table-wrap"><table class="data-table" id="miningTableImporters"></table></div>
+      </div>
+    </div>
+
+    <div class="mining-news-card">
+      <div class="mining-news-hdr">
+        <span class="mining-news-hdr-title">Recent Mining &amp; Steel Sector News</span>
+        <a href="#" onclick="miningGoToSectorNews(); return false;">See all in News →</a>
+      </div>
+      {% for a in mining_news %}
+      <div class="mining-news-row">
+        <a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a>
+        <span class="mining-news-meta">{{ a.source }} · {{ a.published_short }}</span>
+      </div>
+      {% else %}
+      <div class="mining-empty">No recent Mining &amp; Steel sector headlines in the current News window.</div>
+      {% endfor %}
+    </div>
+  </div>
 </div><!-- /econPage -->
 
 
@@ -1096,6 +1345,10 @@ const BRAZIL_DATASETS = {{ brazil_datasets_json }};
 const BRAZIL_CHARTS   = {{ brazil_charts_json }};
 const CREDIT_DATASETS = {{ credit_datasets_json }};
 const CREDIT_CHARTS   = {{ credit_charts_json }};
+const PULP_PAPER_DATA = {{ pulp_paper_json }};
+const PULP_COMPANIES_DATA = {{ pulp_companies_json }};
+const MINING_DATA = {{ mining_json }};
+const MINING_COMPANIES_DATA = {{ mining_companies_json }};
 
 // ── Page switching ────────────────────────────────────────────────────────
 // Five content-type pages now (Cockpit / News / Economic Data / Calendar /
@@ -1112,7 +1365,7 @@ const CREDIT_CHARTS   = {{ credit_charts_json }};
 const FOOTER_ATTRIBUTION = {
   cockpit:  'Market data via Yahoo Finance, FRED &amp; ANBIMA',
   news:     'News via Google News &amp; GDELT',
-  econ:     'Charts via BCB, chinadata.live &amp; ANP',
+  econ:     'Charts via BCB, chinadata.live, ANP, FAOSTAT &amp; BGS',
   calendar: 'Events via BCB, IBGE &amp; Yahoo Finance',
   datasets: 'Charts via <a href="https://chinadata.live" target="_blank">chinadata.live</a>',
 };
@@ -2447,25 +2700,536 @@ function buildEconCharts() {
   }));
 })();
 
-// ── Economic Data / Energy sub-nav (Overview / Energy) ──────────────────────
-// Energy view starts hidden; its Chart.js canvases can't size correctly while
-// display:none, so setupMseSlider()/update() (the ported dashboard's own init
-// calls) only run on first switch to Energy, same lazy-build pattern already
-// used for buildEconCharts()/buildCatalog() on their respective pages.
+// ── Economic Data sub-nav (Overview / Energy / Pulp & Paper) ────────────────
+// Each view starts hidden; Chart.js/Plotly can't size their canvases
+// correctly while display:none, so each view's own init only runs on first
+// switch to it — same lazy-build pattern already used for buildEconCharts()/
+// buildCatalog() on their respective top-level pages. Generalized from a
+// hardcoded 2-way if/else (Overview/Energy) to an N-way loop so adding
+// Pulp & Paper meant one new table row here, not a rewritten function.
+const ECON_SUBVIEWS = {
+  overview: { view: 'econOverviewView', btn: 'econSubBtnOverview' },
+  energy:   { view: 'econEnergyView',   btn: 'econSubBtnEnergy',
+              init: () => { setupMseSlider(); update(); } },
+  pulp:     { view: 'econPulpView',     btn: 'econSubBtnPulp',
+              init: () => buildPulpPaper() },
+  mining:   { view: 'econMiningView',   btn: 'econSubBtnMining',
+              init: () => buildMining() },
+};
 window.econSubnavShow = function (which) {
-  const isEnergy = which === 'energy';
-  document.getElementById('econOverviewView').style.display = isEnergy ? 'none' : '';
-  document.getElementById('econEnergyView').style.display = isEnergy ? '' : 'none';
-  document.getElementById('econSubBtnOverview').classList.toggle('active', !isEnergy);
-  document.getElementById('econSubBtnEnergy').classList.toggle('active', isEnergy);
-  if (isEnergy && !window._energyInitDone) {
-    window._energyInitDone = true;
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      setupMseSlider();
-      update();
-    }));
+  Object.entries(ECON_SUBVIEWS).forEach(([key, v]) => {
+    const active = key === which;
+    document.getElementById(v.view).style.display = active ? '' : 'none';
+    document.getElementById(v.btn).classList.toggle('active', active);
+  });
+  const target = ECON_SUBVIEWS[which];
+  if (target && target.init && !window._subviewInitDone?.[which]) {
+    window._subviewInitDone = window._subviewInitDone || {};
+    window._subviewInitDone[which] = true;
+    requestAnimationFrame(() => requestAnimationFrame(target.init));
   }
 };
+
+// ── Economic Data / Pulp & Paper sub-page ────────────────────────────────────
+// Data comes from FAOSTAT (scrapers/pulp_paper_scraper.py), pre-aggregated
+// in Python (world/country time series, HHI/CR4 concentration, recycled-
+// fibre rate, structural mix — see that file's docstring for the FAOSTAT
+// classification quirks it had to handle). This layer is presentation only:
+// build Plotly traces from PULP_PAPER_DATA, populate 3 ranking tables driven
+// by the category pill + year select, and wire CSV/PPTX export. Reuses
+// .chart-grid/.chart-card (Economic Data's existing look), _plotChart() and
+// chartDownloadPng()/chartExpand() (this page's own shared chart utilities),
+// and the new shared .data-table CSS — no new charting engine, no duplicated
+// Plotly config.
+const PULP_CAT_LABELS = { pulp: 'Pulp', paper: 'Paper & Paperboard', recovered: 'Recovered Fibre' };
+
+function _pulpFmtT(v) {
+  if (v == null) return '—';
+  const abs = Math.abs(v);
+  if (abs >= 1e6) return (v / 1e6).toFixed(1) + 'M t';
+  if (abs >= 1e3) return (v / 1e3).toFixed(0) + 'K t';
+  return Math.round(v) + ' t';
+}
+
+function _pulpPoints(dict) {
+  if (!dict) return [];
+  return Object.keys(dict).sort().map(y => ({ x: y, y: dict[y] })).filter(p => p.y != null);
+}
+
+// Every chart's series follow the same {name,color,points:[{x,y}]} shape
+// _pptxChartInfo() already expects for cockpit/econ charts (see below) — so
+// the same array built here for Plotly rendering is also what PPTX export
+// reads from, no separate data model for the two consumers.
+function _pulpBuildSpecs() {
+  const W = PULP_PAPER_DATA.world || {};
+  const conc = PULP_PAPER_DATA.concentration || {};
+  const mix = PULP_PAPER_DATA.structural_mix || {};
+  const SRC = 'FAO FAOSTAT (Forestry Production and Trade)';
+
+  const hhiPulp  = Object.keys(conc.pulp  || {}).sort().map(y => ({ x: y, y: conc.pulp[y].hhi }));
+  const hhiPaper = Object.keys(conc.paper || {}).sort().map(y => ({ x: y, y: conc.paper[y].hhi }));
+  const mixPulpYears  = Object.keys(mix.pulp_by_type  || {}).sort();
+  const mixPaperYears = Object.keys(mix.paper_by_type || {}).sort();
+
+  return [
+    { id: 'pp-pulp-prod', title: 'World Pulp Production', sector: 'Pulp', chartType: 'line', unit: 'tonnes', source: SRC,
+      series: [{ name: 'Production', color: '#2563eb', points: _pulpPoints(W.pulp?.production) }] },
+    { id: 'pp-paper-prod', title: 'World Paper & Paperboard Production', sector: 'Paper & Paperboard', chartType: 'line', unit: 'tonnes', source: SRC,
+      series: [{ name: 'Production', color: '#16a34a', points: _pulpPoints(W.paper?.production) }] },
+    { id: 'pp-recovered-prod', title: 'World Recovered Paper Collected', sector: 'Recovered Fibre', chartType: 'line', unit: 'tonnes', source: SRC,
+      series: [{ name: 'Recovered paper', color: '#d97706', points: _pulpPoints(W.recovered?.production) }] },
+    { id: 'pp-pulp-trade', title: 'World Pulp Trade', sector: 'Pulp', chartType: 'line', unit: 'tonnes', source: SRC,
+      series: [{ name: 'Exports', color: '#16a34a', points: _pulpPoints(W.pulp?.export_qty) },
+               { name: 'Imports', color: '#dc2626', points: _pulpPoints(W.pulp?.import_qty) }] },
+    { id: 'pp-paper-trade', title: 'World Paper Trade', sector: 'Paper & Paperboard', chartType: 'line', unit: 'tonnes', source: SRC,
+      series: [{ name: 'Exports', color: '#16a34a', points: _pulpPoints(W.paper?.export_qty) },
+               { name: 'Imports', color: '#dc2626', points: _pulpPoints(W.paper?.import_qty) }] },
+    { id: 'pp-recycled-rate', title: 'Recycled-Fibre Utilization Rate', sector: 'Recovered Fibre', chartType: 'line', unit: '%', source: SRC + ' — apparent recovered-paper supply / total fibre furnish',
+      series: [{ name: 'World', color: '#d97706', points: _pulpPoints(PULP_PAPER_DATA.recycled_rate?.world) }] },
+    { id: 'pp-concentration', title: 'Production Concentration (HHI)', sector: 'Industry Structure', chartType: 'line', unit: 'HHI (0-10,000)', source: SRC + ' — Herfindahl-Hirschman Index of country production shares',
+      series: [{ name: 'Pulp', color: '#2563eb', points: hhiPulp }, { name: 'Paper & Paperboard', color: '#16a34a', points: hhiPaper }] },
+    { id: 'pp-pulp-mix', title: 'Pulp Structural Mix', sector: 'Pulp', chartType: 'bar', unit: '% of production', source: SRC,
+      series: [
+        { name: 'Chemical', color: '#2563eb', points: mixPulpYears.map(y => ({ x: y, y: mix.pulp_by_type[y].chemical })) },
+        { name: 'Mechanical & semi-chemical', color: '#94a3b8', points: mixPulpYears.map(y => ({ x: y, y: mix.pulp_by_type[y].mechanical_semichemical })) },
+        { name: 'Dissolving', color: '#d97706', points: mixPulpYears.map(y => ({ x: y, y: mix.pulp_by_type[y].dissolving })) },
+      ] },
+    { id: 'pp-paper-mix', title: 'Paper Structural Mix', sector: 'Paper & Paperboard', chartType: 'bar', unit: '% of production', source: SRC,
+      series: [
+        { name: 'Packaging', color: '#16a34a', points: mixPaperYears.map(y => ({ x: y, y: mix.paper_by_type[y].packaging })) },
+        { name: 'Graphic (printing/writing)', color: '#2563eb', points: mixPaperYears.map(y => ({ x: y, y: mix.paper_by_type[y].graphic })) },
+        { name: 'Household & sanitary', color: '#d97706', points: mixPaperYears.map(y => ({ x: y, y: mix.paper_by_type[y].household_sanitary })) },
+        { name: 'Other', color: '#94a3b8', points: mixPaperYears.map(y => ({ x: y, y: mix.paper_by_type[y].other })) },
+      ] },
+  ];
+}
+
+function _pulpRenderChart(spec) {
+  const plotEl = document.getElementById(`plot-${spec.id}`);
+  const statEl = document.getElementById(`stat-${spec.id}`);
+  const unitEl = document.getElementById(`unit-${spec.id}`);
+  const ftrEl  = document.getElementById(`ftr-${spec.id}`);
+  const nonEmpty = spec.series.filter(s => s.points.length);
+  if (!nonEmpty.length) { statEl.textContent = 'No data'; statEl.classList.add('chart-error'); return; }
+  const traces = nonEmpty.map(s => spec.chartType === 'bar'
+    ? { x: s.points.map(p => p.x), y: s.points.map(p => p.y), name: s.name, type: 'bar', marker: { color: s.color }, hovertemplate: `%{y}<extra>${s.name}</extra>` }
+    : { x: s.points.map(p => p.x), y: s.points.map(p => p.y), name: s.name, type: 'scatter', mode: 'lines', line: { color: s.color, width: 2 }, hovertemplate: `%{y}<extra>${s.name}</extra>` });
+  _plotChart(plotEl, statEl, unitEl, ftrEl, traces, spec.chartType, { data: [1], unit: spec.unit, source: spec.source });
+}
+
+function buildPulpCharts() {
+  const specs = _pulpBuildSpecs();
+  window._pulpCharts = specs; // looked up by id in exportChartToPPTX() -> _pptxChartInfo
+  const container = document.getElementById('pulpCharts');
+  const grid = document.createElement('div');
+  grid.className = 'chart-grid';
+  specs.forEach(spec => {
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.style.borderLeftColor = (spec.series[0] && spec.series[0].color) || 'var(--border-2)';
+    const titleEsc = spec.title.replace(/'/g, "\\'");
+    card.innerHTML = `
+      <div class="chart-card-header">
+        <div><div class="chart-title">${spec.title}</div><div class="chart-sector-tag">${spec.sector}</div><div class="chart-unit" id="unit-${spec.id}"></div></div>
+        <div class="chart-actions">
+          <button class="chart-icon-btn" onclick="chartDownloadPng('plot-${spec.id}','${titleEsc}')" title="Download PNG">${ICON_PNG_SVG}</button>
+          <button class="chart-icon-btn" onclick="pulpChartCSV('${spec.id}')" title="Download CSV">${ICON_CSV_SVG}</button>
+          <button class="chart-icon-btn" onclick="exportChartToPPTX(this, {source:'pulp', id:'${spec.id}'})" title="Export to PowerPoint">${ICON_PPTX_SVG}</button>
+          <button class="chart-icon-btn" onclick="chartExpand('plot-${spec.id}','${titleEsc}', function(){ pulpChartCSV('${spec.id}'); })" title="Expand">${ICON_EXPAND_SVG}</button>
+        </div>
+      </div>
+      <div class="chart-status" id="stat-${spec.id}"><div class="spinner"></div> Loading…</div>
+      <div class="chart-plot" id="plot-${spec.id}"></div>
+      <div class="chart-footer" id="ftr-${spec.id}"></div>`;
+    grid.appendChild(card);
+  });
+  container.innerHTML = '';
+  container.appendChild(grid);
+  requestAnimationFrame(() => specs.forEach(_pulpRenderChart));
+}
+
+window.pulpChartCSV = function (id) {
+  const spec = (window._pulpCharts || []).find(s => s.id === id);
+  if (!spec) return;
+  const years = [...new Set(spec.series.flatMap(s => s.points.map(p => p.x)))].sort();
+  const header = ['Year', ...spec.series.map(s => s.name)].join(',');
+  const rows = years.map(y => [y, ...spec.series.map(s => { const p = s.points.find(pt => pt.x === y); return p ? p.y : ''; })].join(','));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([[header, ...rows].join('\n')], { type: 'text/csv' }));
+  a.download = `${id}.csv`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+};
+
+// Public-company stock cards: same .mkt-card / sparkline / CSV rendering
+// Cockpit already uses (see the hoisted _mkt* helpers above) — the ticker
+// list itself (with country) is the only thing unique to this page.
+window.downloadPulpCompanyCSV = function (ticker) {
+  const d = PULP_COMPANIES_DATA.find(c => c.ticker === ticker);
+  if (d) _mktCsvDownload(d, (d.label || ticker).replace(/[\s\/\*]/g, '-') + '.csv');
+};
+
+function buildPulpCompanies() {
+  const container = document.getElementById('pulpCompanies');
+  if (!PULP_COMPANIES_DATA || !PULP_COMPANIES_DATA.length) {
+    container.innerHTML = '<div class="pulp-empty">Company data not available yet.</div>';
+    return;
+  }
+  container.innerHTML = PULP_COMPANIES_DATA.map(d => `
+    <div class="mkt-card">
+      <div class="mkt-card-meta">
+        <div class="mkt-card-hdr">
+          <span class="mkt-card-name">${d.label}</span>
+          <div class="mkt-card-actions">
+            <button class="chart-icon-btn" onclick="downloadPulpCompanyCSV('${d.ticker}')" title="Download CSV">${ICON_CSV_SVG}</button>
+            <button class="chart-icon-btn" onclick="exportChartToPPTX(this, {source:'pulp-company', ticker:'${d.ticker}'})" title="Export to PowerPoint">${ICON_PPTX_SVG}</button>
+            <button class="chart-icon-btn" onclick="chartExpand('pulp-co-${d.ticker}','${d.label.replace(/'/g, "\\'")}', function(){ downloadPulpCompanyCSV('${d.ticker}'); })" title="Expand chart">${ICON_EXPAND_SVG}</button>
+          </div>
+        </div>
+        <div class="mkt-card-val">
+          ${d.current_fmt}
+          ${d.change_fmt ? `<span class="mkt-chg ${d.change_dir}">${d.change_fmt}</span>` : ''}
+        </div>
+        <div class="mkt-card-source">${d.ticker} · ${d.country}</div>
+      </div>
+      <div class="mkt-card-chart" id="pulp-co-${d.ticker}"></div>
+    </div>`).join('');
+  PULP_COMPANIES_DATA.forEach(d => _mktRenderSpark(document.getElementById(`pulp-co-${d.ticker}`), d));
+}
+
+// ── Shared: category/year-driven country ranking tables ────────────────────
+// Used by both Pulp & Paper and Mining (same "top producers/exporters/
+// importers for the selected category+year" shape, differing only in which
+// dataset object and year-select id they read from) — generalized here
+// rather than duplicated a third time, same judgment call as the .data-table
+// CSS and the hoisted _mkt* sparkline helpers above.
+function _rankRows(dataset, cat, year, element) {
+  const worldVal = ((dataset.world[cat] || {})[element] || {})[year];
+  const rows = [];
+  for (const [country, entry] of Object.entries(dataset.countries || {})) {
+    const v = ((entry[cat] || {})[element] || {})[year];
+    if (v) rows.push({ country, value: v, share: worldVal ? v / worldVal * 100 : null });
+  }
+  rows.sort((a, b) => b.value - a.value);
+  return rows.slice(0, 10);
+}
+
+function _renderRankTable(tableId, rows, unitLabel) {
+  const table = document.getElementById(tableId);
+  if (!rows.length) {
+    table.innerHTML = '<tbody><tr><td style="text-align:center;color:var(--text-muted);padding:16px;">No data for this selection</td></tr></tbody>';
+    return;
+  }
+  const thead = `<thead><tr><th>#</th><th>Country</th><th>${unitLabel}</th><th>World Share</th></tr></thead>`;
+  const tbody = rows.map((r, i) => `<tr><td>${i + 1}</td><td>${r.country}</td><td>${_pulpFmtT(r.value)}</td><td>${r.share != null ? r.share.toFixed(1) + '%' : '—'}</td></tr>`).join('');
+  table.innerHTML = thead + '<tbody>' + tbody + '</tbody>';
+}
+
+function _buildRankTables(dataset, cat, year, tableIds) {
+  const producers = _rankRows(dataset, cat, year, 'production');
+  const exporters = _rankRows(dataset, cat, year, 'export_qty');
+  const importers = _rankRows(dataset, cat, year, 'import_qty');
+  _renderRankTable(tableIds.producers, producers, 'Production');
+  _renderRankTable(tableIds.exporters, exporters, 'Exports');
+  _renderRankTable(tableIds.importers, importers, 'Imports');
+  return { producers, exporters, importers };
+}
+
+function _rankTableToCSV(rows, label, filename) {
+  const csv = [`Rank,Country,${label} (t),World Share (%)`]
+    .concat(rows.map((r, i) => `${i + 1},"${r.country}",${r.value},${r.share != null ? r.share.toFixed(2) : ''}`))
+    .join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+
+window._pulpTableData = {};
+
+function buildPulpTables(cat, year) {
+  window._pulpTableData = _buildRankTables(PULP_PAPER_DATA, cat, year,
+    { producers: 'pulpTableProducers', exporters: 'pulpTableExporters', importers: 'pulpTableImporters' });
+}
+
+window.pulpTableCSV = function (which) {
+  const rows = (window._pulpTableData || {})[which] || [];
+  const label = { producers: 'Production', exporters: 'Exports', importers: 'Imports' }[which] || 'Value';
+  _rankTableToCSV(rows, label, `pulp-paper-${which}-${document.getElementById('pulpYearSelect').value}.csv`);
+};
+
+function updatePulpKPIs(cat) {
+  const W = PULP_PAPER_DATA.world || {};
+  const years = PULP_PAPER_DATA.years || [];
+  const latest = years[years.length - 1], prev = years[years.length - 2];
+  function yoy(dict) {
+    if (!dict) return null;
+    const a = dict[latest], b = dict[prev];
+    return (a != null && b) ? (a - b) / b * 100 : null;
+  }
+  function setSub(id, pct) {
+    const el = document.getElementById(id);
+    el.textContent = pct == null ? latest : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% YoY (${latest})`;
+    el.className = 'kpi-sub' + (pct == null ? '' : (pct >= 0 ? ' pos' : ' neg'));
+  }
+
+  const pulpProd = (W.pulp || {}).production || {};
+  document.getElementById('pulp-kpi-pulp').textContent = _pulpFmtT(pulpProd[latest]);
+  setSub('pulp-kpi-pulp-sub', yoy(pulpProd));
+
+  const paperProd = (W.paper || {}).production || {};
+  document.getElementById('pulp-kpi-paper').textContent = _pulpFmtT(paperProd[latest]);
+  setSub('pulp-kpi-paper-sub', yoy(paperProd));
+
+  const conc = ((PULP_PAPER_DATA.concentration || {})[cat] || {})[latest];
+  const top = conc && conc.top && conc.top[0];
+  document.getElementById('pulp-kpi-top-cat').textContent = ' — ' + PULP_CAT_LABELS[cat];
+  document.getElementById('pulp-kpi-top').textContent = top ? top.country : '—';
+  document.getElementById('pulp-kpi-top-sub').textContent = top ? `${top.share.toFixed(1)}% of world, ${latest}` : 'No data';
+
+  const rec = ((PULP_PAPER_DATA.recycled_rate || {}).world || {})[latest];
+  document.getElementById('pulp-kpi-recycled').textContent = rec != null ? rec.toFixed(1) + '%' : '—';
+  document.getElementById('pulp-kpi-recycled-sub').textContent = rec != null ? `World, ${latest}` : 'Not available';
+}
+
+window.pulpGoToSectorNews = function () {
+  showPage('news');
+  const sel = document.getElementById('newsSector');
+  if (sel) { sel.value = 'Pulp & Paper'; sel.dispatchEvent(new Event('change')); }
+};
+
+function buildPulpPaper() {
+  buildPulpCompanies(); // independent of FAOSTAT data — build regardless
+  const years = PULP_PAPER_DATA.years || [];
+  if (!years.length) {
+    document.getElementById('pulpCharts').innerHTML = '<div class="pulp-empty">Pulp &amp; Paper data not available yet — this dataset refreshes on the next scheduled update.</div>';
+    return;
+  }
+  const yearSel = document.getElementById('pulpYearSelect');
+  years.slice().reverse().forEach(y => {
+    const o = document.createElement('option'); o.value = y; o.textContent = y;
+    yearSel.appendChild(o);
+  });
+  yearSel.value = years[years.length - 1];
+
+  let currentCat = 'pulp';
+  buildPulpCharts();
+  updatePulpKPIs(currentCat);
+  buildPulpTables(currentCat, yearSel.value);
+
+  const pills = document.querySelectorAll('#econPulpView [data-pulp-cat]');
+  pills.forEach(p => p.addEventListener('click', () => {
+    pills.forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    currentCat = p.dataset.pulpCat;
+    updatePulpKPIs(currentCat);
+    buildPulpTables(currentCat, yearSel.value);
+  }));
+  yearSel.addEventListener('change', () => buildPulpTables(currentCat, yearSel.value));
+}
+
+// ── Economic Data / Mining sub-page ──────────────────────────────────────────
+// Third industry-vertical page, same shape as Energy and Pulp & Paper. Data
+// from scrapers/mining_scraper.py (BGS World Mineral Statistics) — see that
+// file's docstring for why categories are keyed by specific BGS commodity
+// series (e.g. "copper, mine") rather than broader groups, and why mine vs.
+// refined stages are kept as separate categories instead of a forced "% mix"
+// the way Pulp & Paper's fibre types are (not a shared-total relationship).
+// Reuses _pulpPoints()/_pulpRenderChart()/_pulpFmtT() as-is (already fully
+// generic, not pulp-specific in behaviour) and the shared _rankRows()/
+// _renderRankTable()/_buildRankTables()/_rankTableToCSV() ranking-table
+// helpers above — only the chart-card-grid loop and page-glue functions are
+// duplicated from Pulp & Paper, same "duplicate the small glue, share the
+// real logic" call as everywhere else in this file.
+const MINING_CATEGORY_COLORS = {
+  iron_ore: '#64748b', crude_steel: '#475569', copper: '#ea580c', copper_refined: '#f97316',
+  gold: '#d97706', silver: '#94a3b8', nickel: '#0f766e', zinc: '#0891b2', lead: '#7c3aed',
+  tin: '#be185d', bauxite: '#92400e', aluminium: '#0284c7', manganese: '#65a30d',
+};
+
+function _hhiLabel(hhi) {
+  if (hhi < 1500) return 'Unconcentrated';
+  if (hhi < 2500) return 'Moderately concentrated';
+  return 'Highly concentrated';
+}
+
+function _miningBuildSpecs() {
+  const W = MINING_DATA.world || {};
+  const items = MINING_DATA.items || {};
+  const conc = MINING_DATA.concentration || {};
+  const SRC = 'British Geological Survey (World Mineral Statistics)';
+
+  const specs = Object.keys(MINING_CATEGORY_COLORS).filter(k => items[k]).map(key => ({
+    id: `mn-${key}`, title: items[key].label, sector: items[key].label, chartType: 'line',
+    unit: items[key].unit || '', source: SRC,
+    series: [{ name: 'Production', color: MINING_CATEGORY_COLORS[key], points: _pulpPoints((W[key] || {}).production) }],
+  }));
+
+  const HEADLINE = ['iron_ore', 'copper', 'gold', 'nickel', 'bauxite'];
+  const concSeries = HEADLINE.filter(k => conc[k] && Object.keys(conc[k]).length).map(k => ({
+    name: items[k] ? items[k].label : k, color: MINING_CATEGORY_COLORS[k],
+    points: Object.keys(conc[k]).sort().map(y => ({ x: y, y: conc[k][y].hhi })),
+  }));
+  if (concSeries.length) {
+    specs.push({
+      id: 'mn-concentration', title: 'Production Concentration (HHI) — Key Commodities', sector: 'Industry Structure',
+      chartType: 'line', unit: 'HHI (0-10,000)', source: SRC + ' — Herfindahl-Hirschman Index of country production shares',
+      series: concSeries,
+    });
+  }
+  return specs;
+}
+
+function buildMiningCharts() {
+  const specs = _miningBuildSpecs();
+  window._miningCharts = specs; // looked up by id in exportChartToPPTX() -> _pptxChartInfo
+  const container = document.getElementById('miningCharts');
+  const grid = document.createElement('div');
+  grid.className = 'chart-grid';
+  specs.forEach(spec => {
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.style.borderLeftColor = (spec.series[0] && spec.series[0].color) || 'var(--border-2)';
+    const titleEsc = spec.title.replace(/'/g, "\\'");
+    card.innerHTML = `
+      <div class="chart-card-header">
+        <div><div class="chart-title">${spec.title}</div><div class="chart-sector-tag">${spec.sector}</div><div class="chart-unit" id="unit-${spec.id}"></div></div>
+        <div class="chart-actions">
+          <button class="chart-icon-btn" onclick="chartDownloadPng('plot-${spec.id}','${titleEsc}')" title="Download PNG">${ICON_PNG_SVG}</button>
+          <button class="chart-icon-btn" onclick="miningChartCSV('${spec.id}')" title="Download CSV">${ICON_CSV_SVG}</button>
+          <button class="chart-icon-btn" onclick="exportChartToPPTX(this, {source:'mining', id:'${spec.id}'})" title="Export to PowerPoint">${ICON_PPTX_SVG}</button>
+          <button class="chart-icon-btn" onclick="chartExpand('plot-${spec.id}','${titleEsc}', function(){ miningChartCSV('${spec.id}'); })" title="Expand">${ICON_EXPAND_SVG}</button>
+        </div>
+      </div>
+      <div class="chart-status" id="stat-${spec.id}"><div class="spinner"></div> Loading…</div>
+      <div class="chart-plot" id="plot-${spec.id}"></div>
+      <div class="chart-footer" id="ftr-${spec.id}"></div>`;
+    grid.appendChild(card);
+  });
+  container.innerHTML = '';
+  container.appendChild(grid);
+  requestAnimationFrame(() => specs.forEach(_pulpRenderChart));
+}
+
+window.miningChartCSV = function (id) {
+  const spec = (window._miningCharts || []).find(s => s.id === id);
+  if (!spec) return;
+  const years = [...new Set(spec.series.flatMap(s => s.points.map(p => p.x)))].sort();
+  const header = ['Year', ...spec.series.map(s => s.name)].join(',');
+  const rows = years.map(y => [y, ...spec.series.map(s => { const p = s.points.find(pt => pt.x === y); return p ? p.y : ''; })].join(','));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([[header, ...rows].join('\n')], { type: 'text/csv' }));
+  a.download = `${id}.csv`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+};
+
+window._miningTableData = {};
+
+function buildMiningTables(cat, year) {
+  window._miningTableData = _buildRankTables(MINING_DATA, cat, year,
+    { producers: 'miningTableProducers', exporters: 'miningTableExporters', importers: 'miningTableImporters' });
+}
+
+window.miningTableCSV = function (which) {
+  const rows = (window._miningTableData || {})[which] || [];
+  const label = { producers: 'Production', exporters: 'Exports', importers: 'Imports' }[which] || 'Value';
+  _rankTableToCSV(rows, label, `mining-${which}-${document.getElementById('miningYearSelect').value}.csv`);
+};
+
+function updateMiningKPIs(cat) {
+  const W = MINING_DATA.world || {};
+  const items = MINING_DATA.items || {};
+  const years = MINING_DATA.years || [];
+  const latest = years[years.length - 1], prev = years[years.length - 2];
+  document.getElementById('mining-kpi-cat').textContent = items[cat] ? ' — ' + items[cat].label : '';
+
+  const prod = ((W[cat] || {}).production) || {};
+  document.getElementById('mining-kpi-prod').textContent = _pulpFmtT(prod[latest]);
+  const a = prod[latest], b = prod[prev];
+  const pct = (a != null && b) ? (a - b) / b * 100 : null;
+  const subEl = document.getElementById('mining-kpi-prod-sub');
+  subEl.textContent = pct == null ? (latest || '—') : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% YoY (${latest})`;
+  subEl.className = 'kpi-sub' + (pct == null ? '' : (pct >= 0 ? ' pos' : ' neg'));
+
+  const conc = ((MINING_DATA.concentration || {})[cat] || {})[latest];
+  const top = conc && conc.top && conc.top[0];
+  document.getElementById('mining-kpi-top').textContent = top ? top.country : '—';
+  document.getElementById('mining-kpi-top-sub').textContent = top ? `${top.share.toFixed(1)}% of world, ${latest}` : 'No data';
+  document.getElementById('mining-kpi-hhi').textContent = conc ? conc.hhi.toLocaleString() : '—';
+  document.getElementById('mining-kpi-hhi-sub').textContent = conc ? `${_hhiLabel(conc.hhi)}, ${latest}` : 'No data';
+  document.getElementById('mining-kpi-cr4').textContent = conc ? conc.cr4.toFixed(1) + '%' : '—';
+}
+
+window.downloadMiningCompanyCSV = function (ticker) {
+  const d = MINING_COMPANIES_DATA.find(c => c.ticker === ticker);
+  if (d) _mktCsvDownload(d, (d.label || ticker).replace(/[\s\/\*]/g, '-') + '.csv');
+};
+
+function buildMiningCompanies() {
+  const container = document.getElementById('miningCompanies');
+  if (!MINING_COMPANIES_DATA || !MINING_COMPANIES_DATA.length) {
+    container.innerHTML = '<div class="mining-empty">Company data not available yet.</div>';
+    return;
+  }
+  container.innerHTML = MINING_COMPANIES_DATA.map(d => `
+    <div class="mkt-card">
+      <div class="mkt-card-meta">
+        <div class="mkt-card-hdr">
+          <span class="mkt-card-name">${d.label}</span>
+          <div class="mkt-card-actions">
+            <button class="chart-icon-btn" onclick="downloadMiningCompanyCSV('${d.ticker}')" title="Download CSV">${ICON_CSV_SVG}</button>
+            <button class="chart-icon-btn" onclick="exportChartToPPTX(this, {source:'mining-company', ticker:'${d.ticker}'})" title="Export to PowerPoint">${ICON_PPTX_SVG}</button>
+            <button class="chart-icon-btn" onclick="chartExpand('mining-co-${d.ticker}','${d.label.replace(/'/g, "\\'")}', function(){ downloadMiningCompanyCSV('${d.ticker}'); })" title="Expand chart">${ICON_EXPAND_SVG}</button>
+          </div>
+        </div>
+        <div class="mkt-card-val">
+          ${d.current_fmt}
+          ${d.change_fmt ? `<span class="mkt-chg ${d.change_dir}">${d.change_fmt}</span>` : ''}
+        </div>
+        <div class="mkt-card-source">${d.ticker} · ${d.country}</div>
+      </div>
+      <div class="mkt-card-chart" id="mining-co-${d.ticker}"></div>
+    </div>`).join('');
+  MINING_COMPANIES_DATA.forEach(d => _mktRenderSpark(document.getElementById(`mining-co-${d.ticker}`), d));
+}
+
+window.miningGoToSectorNews = function () {
+  showPage('news');
+  const sel = document.getElementById('newsSector');
+  if (sel) { sel.value = 'Mining & Steel'; sel.dispatchEvent(new Event('change')); }
+};
+
+function buildMining() {
+  buildMiningCompanies(); // independent of BGS data — build regardless
+  const years = MINING_DATA.years || [];
+  if (!years.length) {
+    document.getElementById('miningCharts').innerHTML = '<div class="mining-empty">Mining data not available yet — this dataset refreshes on the next scheduled update.</div>';
+    return;
+  }
+  const yearSel = document.getElementById('miningYearSelect');
+  years.slice().reverse().forEach(y => {
+    const o = document.createElement('option'); o.value = y; o.textContent = y;
+    yearSel.appendChild(o);
+  });
+  yearSel.value = years[years.length - 1];
+
+  let currentCat = 'iron_ore';
+  buildMiningCharts();
+  updateMiningKPIs(currentCat);
+  buildMiningTables(currentCat, yearSel.value);
+
+  const pills = document.querySelectorAll('#econMiningView [data-mining-cat]');
+  pills.forEach(p => p.addEventListener('click', () => {
+    pills.forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    currentCat = p.dataset.miningCat;
+    updateMiningKPIs(currentCat);
+    buildMiningTables(currentCat, yearSel.value);
+  }));
+  yearSel.addEventListener('change', () => buildMiningTables(currentCat, yearSel.value));
+}
 
 // ── Calendar country filter (All / Brazil / China) ──────────────────────────
 (function () {
@@ -2563,6 +3327,42 @@ function _pptxChartInfo(ref) {
     if (!points.length) return null;
     return { title: ds.title, unit: meta.unit || '', source: meta.source || '',
              series: [{ name: ds.title, color: fallbackColor, points }] };
+  }
+  if (ref.source === 'pulp') {
+    const spec = (window._pulpCharts || []).find(x => x.id === ref.id);
+    if (!spec) return null;
+    const series = spec.series
+      .map(s => ({ name: s.name, color: (s.color || '#1e293b').replace('#', ''), points: s.points }))
+      .filter(s => s.points.length);
+    if (!series.length) return null;
+    return { title: spec.title, unit: spec.unit || '', source: spec.source || '', series };
+  }
+  if (ref.source === 'pulp-company') {
+    const d = (PULP_COMPANIES_DATA || []).find(c => c.ticker === ref.ticker);
+    if (!d || !d.data || !d.data.length) return null;
+    return {
+      title: `${d.label} (${d.ticker})`, unit: d.unit || '', source: d.source || '',
+      series: [{ name: d.label, color: (d.color || '#1e293b').replace('#', ''),
+                 points: d.data.map(p => ({ x: p.x, y: p.y })) }],
+    };
+  }
+  if (ref.source === 'mining') {
+    const spec = (window._miningCharts || []).find(x => x.id === ref.id);
+    if (!spec) return null;
+    const series = spec.series
+      .map(s => ({ name: s.name, color: (s.color || '#1e293b').replace('#', ''), points: s.points }))
+      .filter(s => s.points.length);
+    if (!series.length) return null;
+    return { title: spec.title, unit: spec.unit || '', source: spec.source || '', series };
+  }
+  if (ref.source === 'mining-company') {
+    const d = (MINING_COMPANIES_DATA || []).find(c => c.ticker === ref.ticker);
+    if (!d || !d.data || !d.data.length) return null;
+    return {
+      title: `${d.label} (${d.ticker})`, unit: d.unit || '', source: d.source || '',
+      series: [{ name: d.label, color: (d.color || '#1e293b').replace('#', ''),
+                 points: d.data.map(p => ({ x: p.x, y: p.y })) }],
+    };
   }
   return null;
 }
@@ -2680,61 +3480,70 @@ window.chartModalClose = function(e) {
   document.getElementById('chartModal').classList.remove('open');
 };
 
+// ── Shared compact-sparkline-card rendering (Cockpit's .mkt-card look) ──────
+// Lifted out of what was a Cockpit-only IIFE so the Pulp & Paper "Public
+// Company Performance" panel (same .mkt-card visual language, same
+// {label,unit,color,data:[{x,y}]} shape via _ck_make() on the Python side)
+// can reuse the exact same trace/layout/CSV logic instead of duplicating a
+// second copy of this chart styling.
+function _mktCsvDownload(d, filename) {
+  const rows = ['Date,Value'];
+  (d.data || []).forEach(p => rows.push(p.x + ',' + p.y));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([rows.join('\n')], {type: 'text/csv'}));
+  a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+
+function _mktSparkLayout(d) {
+  return {
+    margin: {t: 2, r: 6, b: 22, l: 44},
+    paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+    showlegend: false,
+    xaxis: {
+      showgrid: false, zeroline: false, showline: false,
+      tickfont: {size: 8, color: '#94a3b8'},
+      tickformat: '%b %y', nticks: 5
+    },
+    yaxis: {
+      showgrid: true, gridcolor: '#f1f5f9',
+      zeroline: false, showline: false,
+      tickfont: {size: 8, color: '#94a3b8'},
+      tickformat: d.unit === 'pts' ? ',.0f' : '.2f'
+    }
+  };
+}
+
+function _mktSparkTrace(d) {
+  return {
+    x: d.data.map(p => p.x), y: d.data.map(p => p.y),
+    type: 'scatter', mode: 'lines',
+    line: {color: d.color, width: 1.5, shape: 'spline', smoothing: 0.4},
+    fill: 'tozeroy', fillcolor: d.color + '18',
+    hovertemplate: '<b>%{y:.2f}</b> ' + d.unit + '<br>%{x}<extra></extra>'
+  };
+}
+
+function _mktRenderSpark(el, d) {
+  if (!el) return;
+  if (!d.data || d.data.length === 0) {
+    el.innerHTML = '<div class="mkt-no-data">Data unavailable</div>'; return;
+  }
+  Plotly.newPlot(el, [_mktSparkTrace(d)], _mktSparkLayout(d), STANDARD_PLOTLY_CFG);
+}
+
 // ── Cockpit market charts ─────────────────────────────────────────────────────
 (function () {
-  function _csvDownload(d, filename) {
-    const rows = ['Date,Value'];
-    (d.data || []).forEach(p => rows.push(p.x + ',' + p.y));
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([rows.join('\n')], {type: 'text/csv'}));
-    a.download = filename;
-    document.body.appendChild(a); a.click();
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
-  }
-
   window.downloadCockpitCSV = function(key) {
     const d = COCKPIT_DATA[key];
-    if (d) _csvDownload(d, (d.label || key).replace(/[\s\/\*]/g, '-') + '.csv');
+    if (d) _mktCsvDownload(d, (d.label || key).replace(/[\s\/\*]/g, '-') + '.csv');
   };
-
-  function mkLayout(d) {
-    return {
-      margin: {t: 2, r: 6, b: 22, l: 44},
-      paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-      showlegend: false,
-      xaxis: {
-        showgrid: false, zeroline: false, showline: false,
-        tickfont: {size: 8, color: '#94a3b8'},
-        tickformat: '%b %y', nticks: 5
-      },
-      yaxis: {
-        showgrid: true, gridcolor: '#f1f5f9',
-        zeroline: false, showline: false,
-        tickfont: {size: 8, color: '#94a3b8'},
-        tickformat: d.unit === 'pts' ? ',.0f' : '.2f'
-      }
-    };
-  }
-
-  function mkTrace(d) {
-    return {
-      x: d.data.map(p => p.x), y: d.data.map(p => p.y),
-      type: 'scatter', mode: 'lines',
-      line: {color: d.color, width: 1.5, shape: 'spline', smoothing: 0.4},
-      fill: 'tozeroy', fillcolor: d.color + '18',
-      hovertemplate: '<b>%{y:.2f}</b> ' + d.unit + '<br>%{x}<extra></extra>'
-    };
-  }
 
   // Render compact charts on cards — skip FX stat cards
   Object.entries(COCKPIT_DATA).forEach(([key, d]) => {
     if (!d.show_chart) return;
-    const el = document.getElementById('mkt-' + key);
-    if (!el) return;
-    if (!d.data || d.data.length === 0) {
-      el.innerHTML = '<div class="mkt-no-data">Data unavailable</div>'; return;
-    }
-    Plotly.newPlot(el, [mkTrace(d)], mkLayout(d), STANDARD_PLOTLY_CFG);
+    _mktRenderSpark(document.getElementById('mkt-' + key), d);
   });
 })();
 

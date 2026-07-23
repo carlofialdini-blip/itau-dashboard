@@ -30,6 +30,8 @@ STEPS = [
     ("Brazil news",       [sys.executable, str(ROOT / "scrapers" / "brazil_scraper.py")]),
     ("Credit news",       [sys.executable, str(ROOT / "scrapers" / "credit_scraper.py")]),
     ("Fuel distribution data (ANP)", [sys.executable, str(ROOT / "scrapers" / "fuel_scraper.py")]),
+    ("Pulp & paper data (FAOSTAT)", [sys.executable, str(ROOT / "scrapers" / "pulp_paper_scraper.py")]),
+    ("Mining data (BGS)", [sys.executable, str(ROOT / "scrapers" / "mining_scraper.py")]),
     ("Portfolio events",  [sys.executable, str(ROOT / "events" / "events_generator.py")]),
     ("China events",      [sys.executable, str(ROOT / "events" / "china_events_generator.py")]),
     ("Brazil events",     [sys.executable, str(ROOT / "events" / "brazil_events_generator.py")]),
