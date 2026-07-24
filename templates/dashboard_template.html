@@ -177,6 +177,11 @@ div.hdr-mark { background: var(--accent); }
 }
 .src-clear:hover { text-decoration: underline; }
 
+.filters-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.filters-head-title { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.filters-reset { font-size: 11px; color: var(--accent); cursor: pointer; user-select: none; }
+.filters-reset:hover { text-decoration: underline; }
+
 /* China sector pills */
 .f-tag {
   display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 5px;
@@ -867,6 +872,10 @@ div.hdr-mark { background: var(--accent); }
 <div id="newsPage" class="page">
   <div class="with-sidebar">
     <aside class="sidebar">
+      <div class="filters-head">
+        <span class="filters-head-title">Filters</span>
+        <span class="filters-reset" id="newsFilterReset">Reset filters</span>
+      </div>
       <div class="search-wrap">
         <svg class="search-icon" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
         <input type="text" id="newsSearch" class="search-input" placeholder="Search headlines…" autocomplete="off">
@@ -1467,6 +1476,19 @@ function showPage(name) {
     document.querySelectorAll('#newsSourceList .src-item').forEach(item => {
       item.style.display = !term || item.textContent.toLowerCase().includes(term) ? '' : 'none';
     });
+  });
+
+  document.getElementById('newsFilterReset').addEventListener('click', () => {
+    country = ''; sec = ''; co = ''; q = ''; sources = new Set();
+    document.getElementById('newsCountry').value = '';
+    document.getElementById('newsSector').value = '';
+    document.getElementById('newsCompany').value = '';
+    document.getElementById('newsSearch').value = '';
+    document.getElementById('newsSourceSearch').value = '';
+    srcCheckboxes.forEach(cb => cb.checked = false);
+    document.querySelectorAll('#newsSourceList .src-item').forEach(item => { item.style.display = ''; });
+    updateSourceCount();
+    apply();
   });
 
   cards.forEach(card => card.addEventListener('click', e => { if (e.target.tagName !== 'A') { const a = card.querySelector('a'); if (a) window.open(a.href,'_blank','noopener'); } }));
