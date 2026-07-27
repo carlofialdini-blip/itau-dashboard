@@ -37,6 +37,100 @@
   --imp-low:    #94a3b8;
 }
 
+/* ── LANDING PAGE ──────────────────────────────────────────────────────────
+   Full-viewport splash shown on load, before the dashboard itself. Three
+   hero photos (Energy/Mining/Pulp & Paper — the three hard-commodity
+   verticals this dashboard covers) cross-fade on a timer with a slow Ken
+   Burns zoom for cinematic motion; a dark gradient keeps the title legible
+   regardless of which photo is showing. Dismissed by the CTA (or clicking
+   anywhere on the hero), which fades the whole overlay out and reveals the
+   dashboard underneath — the dashboard itself is unchanged, already fully
+   rendered behind this, so "entering" costs nothing extra to compute. */
+#landingOverlay {
+  position: fixed; inset: 0; z-index: 900;
+  overflow: hidden;
+  background: #0b1220;
+  cursor: pointer;
+  transition: opacity 900ms ease, visibility 900ms;
+}
+#landingOverlay.landing-leaving { opacity: 0; visibility: hidden; pointer-events: none; }
+.landing-bg {
+  position: absolute; inset: -2%;
+  background-size: cover; background-position: center;
+  opacity: 0;
+  transform: scale(1.01);
+  transition: opacity 1600ms ease;
+  will-change: opacity, transform;
+}
+.landing-bg.active { opacity: 1; animation: landingKenBurns 8000ms ease-out forwards; }
+@keyframes landingKenBurns {
+  from { transform: scale(1.01); }
+  to   { transform: scale(1.13); }
+}
+.landing-scrim {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 15%, rgba(11,18,32,.10) 0%, rgba(11,18,32,.42) 60%, rgba(11,18,32,.72) 100%),
+    linear-gradient(180deg, rgba(11,18,32,.42) 0%, rgba(11,18,32,.22) 35%, rgba(11,18,32,.60) 100%);
+}
+.landing-content {
+  position: relative; z-index: 2;
+  height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 24px;
+  animation: landingRise 1100ms cubic-bezier(.2,.9,.25,1) both;
+  animation-delay: 200ms;
+}
+@keyframes landingRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.landing-mark {
+  width: 56px; height: 56px; border-radius: 12px;
+  object-fit: cover; margin-bottom: 22px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.4);
+}
+.landing-kicker {
+  font-size: 12px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase;
+  color: #fbbf6d; margin-bottom: 18px;
+}
+.landing-title {
+  font-size: 58px; font-weight: 700; letter-spacing: -1.5px; line-height: 1.05;
+  color: #ffffff; text-shadow: 0 4px 40px rgba(0,0,0,.5);
+}
+.landing-sub {
+  margin-top: 16px; font-size: 17px; font-weight: 400; color: rgba(255,255,255,.82);
+  letter-spacing: .2px; max-width: 560px;
+}
+.landing-sub b { color: #ffffff; font-weight: 600; }
+.landing-cta {
+  margin-top: 44px;
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 15px 34px;
+  background: var(--accent); color: #1c1006;
+  font-family: inherit; font-size: 14px; font-weight: 700; letter-spacing: .3px;
+  border: none; border-radius: 999px; cursor: pointer;
+  box-shadow: 0 10px 30px rgba(217,119,6,.35);
+  transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+}
+.landing-cta:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 14px 38px rgba(217,119,6,.5); background: #ea8f14; }
+.landing-cta svg { transition: transform .25s ease; }
+.landing-cta:hover svg { transform: translateX(3px); }
+.landing-dots {
+  position: absolute; z-index: 2; bottom: 30px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 8px;
+}
+.landing-dot { width: 22px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.28); transition: background .3s ease; }
+.landing-dot.active { background: #fbbf6d; }
+.landing-caption {
+  position: absolute; z-index: 2; bottom: 30px; right: 28px;
+  font-size: 10.5px; letter-spacing: .5px; color: rgba(255,255,255,.5);
+}
+@media (max-width: 640px) {
+  .landing-title { font-size: 38px; }
+  .landing-sub { font-size: 14px; }
+}
+
 html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
@@ -802,6 +896,30 @@ div.hdr-mark { background: var(--accent); }
 </style>
 </head>
 <body>
+{% if cover_image_uris %}
+<div id="landingOverlay" onclick="enterDashboard()">
+  {% for uri in cover_image_uris %}
+  <div class="landing-bg{% if loop.first %} active{% endif %}" style="background-image:url('{{ uri }}')"></div>
+  {% endfor %}
+  <div class="landing-scrim"></div>
+  <div class="landing-content">
+    {% if logo_data_uri %}<img class="landing-mark" src="{{ logo_data_uri }}" alt="">{% endif %}
+    <div class="landing-kicker">Itaú &middot; Internal Research</div>
+    <div class="landing-title">Portfolio Intelligence</div>
+    <div class="landing-sub">Live markets, news and macro data across <b>Brazil</b>, <b>China</b> and global <b>hard commodities</b> — energy, mining, pulp &amp; paper and agriculture — in one dashboard.</div>
+    <button class="landing-cta" onclick="event.stopPropagation(); enterDashboard()">
+      Enter Dashboard
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+    </button>
+  </div>
+  <div class="landing-dots">
+    {% for uri in cover_image_uris %}
+    <div class="landing-dot{% if loop.first %} active{% endif %}"></div>
+    {% endfor %}
+  </div>
+  <div class="landing-caption">Updated {{ generated }}</div>
+</div>
+{% endif %}
 {% set ICON_CSV %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>{% endset %}
 {% set ICON_PNG %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.4" fill="currentColor" stroke="none"/><path d="M21 15l-5-5-4 4-3-3-6 6"/></svg>{% endset %}
 {% set ICON_EXPAND %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>{% endset %}
@@ -942,6 +1060,7 @@ div.hdr-mark { background: var(--accent); }
           <span id="clipActive" class="clip-active" style="display:none">
             <span class="clip-count-txt"><span id="clipCount">0</span> selected</span>
             <button id="clipExportBtn" class="clip-btn clip-btn-primary" onclick="clipExport()" disabled>Export Excel</button>
+            <button id="clipEmailBtn" class="clip-btn clip-btn-primary" onclick="clipEmail()" disabled>Email Clipping</button>
             <button class="clip-btn clip-btn-cancel" onclick="clipCancel()">Cancel</button>
           </span>
         </div>
@@ -1454,6 +1573,39 @@ div.hdr-mark { background: var(--accent); }
 
 
 <script>
+// ── Landing page: cross-fading hero cycle + dismiss ─────────────────────────
+(function () {
+  const overlay = document.getElementById('landingOverlay');
+  if (!overlay) return;
+  const bgs  = overlay.querySelectorAll('.landing-bg');
+  const dots = overlay.querySelectorAll('.landing-dot');
+  let i = 0, timer = null;
+
+  function show(next) {
+    bgs[i].classList.remove('active');
+    if (dots[i]) dots[i].classList.remove('active');
+    i = next;
+    bgs[i].classList.add('active');
+    if (dots[i]) dots[i].classList.add('active');
+  }
+
+  if (bgs.length > 1) {
+    timer = setInterval(() => show((i + 1) % bgs.length), 6000);
+  }
+
+  window.enterDashboard = function () {
+    if (timer) clearInterval(timer);
+    overlay.classList.add('landing-leaving');
+    setTimeout(() => { overlay.style.display = 'none'; }, 950);
+  };
+
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === 'Enter' || e.key === ' ') && overlay.style.display !== 'none' && !overlay.classList.contains('landing-leaving')) {
+      window.enterDashboard();
+    }
+  });
+})();
+
 const COCKPIT_DATA    = {{ cockpit_json }};
 const CHINA_DATASETS  = {{ china_datasets_json }};
 const CHINA_CHARTS    = {{ china_charts_json }};
@@ -1617,12 +1769,14 @@ function showPage(name) {
   const activeEl  = document.getElementById('clipActive');
   const countEl   = document.getElementById('clipCount');
   const exportBtn = document.getElementById('clipExportBtn');
+  const emailBtn  = document.getElementById('clipEmailBtn');
   const selected  = new Set();
   let clipMode = false;
 
   function updateUI() {
     countEl.textContent = selected.size;
     exportBtn.disabled = selected.size === 0;
+    emailBtn.disabled = selected.size === 0;
   }
 
   function setSelected(card, on) {
@@ -1649,19 +1803,37 @@ function showPage(name) {
     updateUI();
   };
 
-  window.clipExport = function () {
-    if (selected.size === 0) return;
+  // Shared by clipExport() and clipEmail() — the email version just needs a
+  // few more fields (source/sector/company/importance) than the spreadsheet
+  // export does, so both read from the same gathered rows rather than each
+  // re-walking the DOM with their own subtly-different field list.
+  function gatherSelected() {
     const rows = Array.from(selected).map(card => {
-      const a  = card.querySelector('.news-title a');
-      const ts = card.querySelector('.card-time');
-      const dt = ts && ts.dataset.ts ? new Date(ts.dataset.ts) : null;
+      const a    = card.querySelector('.news-title a');
+      const ts   = card.querySelector('.card-time');
+      const dt   = ts && ts.dataset.ts ? new Date(ts.dataset.ts) : null;
+      const sec  = card.querySelector('.badge-sec');
+      const co   = card.querySelector('.badge-co');
+      const imp  = card.querySelector('.badge-importance');
+      const src  = card.querySelector('.meta-src');
       return {
-        date:  dt && !isNaN(dt) ? dt : null,
-        title: a ? a.textContent.trim() : '',
-        link:  a ? a.href : '',
+        date:       dt && !isNaN(dt) ? dt : null,
+        title:      a ? a.textContent.trim() : '',
+        link:       a ? a.href : '',
+        source:     src ? src.textContent.trim() : '',
+        sector:     sec ? sec.textContent.trim() : '',
+        sectorColor: card.querySelector('.card-bar') ? getComputedStyle(card.querySelector('.card-bar')).backgroundColor : '#d97706',
+        company:    co ? co.textContent.trim() : '',
+        importance: imp ? imp.textContent.trim() : '',
       };
     });
     rows.sort((x, y) => (y.date ? y.date.getTime() : 0) - (x.date ? x.date.getTime() : 0));
+    return rows;
+  }
+
+  window.clipExport = function () {
+    if (selected.size === 0) return;
+    const rows = gatherSelected();
 
     const aoa = [['Date', 'Title', 'Link']];
     rows.forEach(r => aoa.push([r.date ? r.date.toLocaleDateString('pt-BR') : '', r.title, r.link]));
@@ -1677,6 +1849,113 @@ function showPage(name) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Clipping');
     XLSX.writeFile(wb, `news-clipping-${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+    clipCancel();
+  };
+
+  // ── Email Clipping: a ready-to-forward .eml file, not just a spreadsheet ──
+  // Excel is for someone who wants to work with the data; this is for the
+  // much more common ask — "send this morning's headlines to the team" —
+  // without anyone hand-copying titles and links into an email body. Builds
+  // a table-based, inline-styled HTML email (Outlook's rendering engine is
+  // Word, not a browser — no flexbox/grid/gradients/custom-property
+  // reliance) and wraps it as a .eml file. Double-clicking it opens the
+  // message in the user's default mail client; Forward, add recipients,
+  // send — the clipping itself needs zero further editing.
+  function escHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+
+  function buildClipEmailHtml(rows) {
+    const now = new Date();
+    const dateLabel = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const impColor = { high: '#dc2626', medium: '#d97706', low: '#94a3b8' };
+
+    const items = rows.map(r => {
+      const color = r.sectorColor || '#d97706';
+      const dateStr = r.date ? r.date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + (r.date ? ', ' + r.date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '') : '';
+      const badges = [
+        r.company ? `<span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:.3px;color:#334155;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:2px 7px;margin:0 5px 4px 0;">${escHtml(r.company.toUpperCase())}</span>` : '',
+        r.sector  ? `<span style="display:inline-block;font-size:10px;font-weight:700;color:${color};background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:2px 7px;margin:0 5px 4px 0;">${escHtml(r.sector)}</span>` : '',
+        r.importance ? `<span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:.4px;color:${impColor[r.importance] || '#94a3b8'};padding:2px 0;margin:0 0 4px 0;">${escHtml(r.importance.toUpperCase())}</span>` : '',
+      ].join('');
+      return `
+      <tr><td style="padding:0 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid #eef2f7;">
+          <tr>
+            <td width="4" style="background:${color};font-size:0;line-height:0;">&nbsp;</td>
+            <td style="padding:15px 0 15px 14px;">
+              <div style="margin:0 0 2px;">${badges}</div>
+              <div style="font-size:14.5px;font-weight:700;line-height:1.4;margin-bottom:5px;font-family:Arial,'Segoe UI',Helvetica,sans-serif;">
+                <a href="${escHtml(r.link)}" style="color:#0f172a;text-decoration:none;">${escHtml(r.title)}</a>
+              </div>
+              <div style="font-size:11.5px;color:#94a3b8;font-family:Arial,'Segoe UI',Helvetica,sans-serif;">${escHtml(r.source)}${r.source && dateStr ? ' &middot; ' : ''}${escHtml(dateStr)}</div>
+            </td>
+          </tr>
+        </table>
+      </td></tr>`;
+    }).join('');
+
+    return `<!doctype html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,'Segoe UI',Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:28px 0;">
+<tr><td align="center">
+<table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:640px;background:#ffffff;border:1px solid #e2e8f0;">
+  <tr><td style="background:#0f172a;padding:26px 32px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td style="font-family:Arial,'Segoe UI',Helvetica,sans-serif;">
+        <div style="color:#ffffff;font-size:19px;font-weight:700;letter-spacing:-.3px;">Portfolio Intelligence</div>
+        <div style="color:#94a3b8;font-size:10.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;">News Clipping</div>
+      </td>
+      <td align="right" valign="top" style="font-family:Arial,'Segoe UI',Helvetica,sans-serif;">
+        <span style="display:inline-block;color:#fbbf6d;font-size:12px;font-weight:700;border:1px solid #334155;border-radius:20px;padding:4px 12px;">${rows.length} article${rows.length === 1 ? '' : 's'}</span>
+      </td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="padding:14px 32px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+    <div style="color:#475569;font-size:12px;font-family:Arial,'Segoe UI',Helvetica,sans-serif;">${dateLabel}</div>
+  </td></tr>
+  ${items}
+  <tr><td style="padding:18px 32px;background:#f8fafc;">
+    <div style="font-size:10.5px;color:#94a3b8;font-family:Arial,'Segoe UI',Helvetica,sans-serif;">Generated by Portfolio Intelligence &middot; ${escHtml(now.toLocaleString('en-GB'))}</div>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+  }
+
+  window.clipEmail = function () {
+    if (selected.size === 0) return;
+    const rows = gatherSelected();
+    const html = buildClipEmailHtml(rows);
+    // Plain hyphen, not an em dash -- raw non-ASCII in an unencoded RFC 5322
+    // header isn't safe (would need RFC 2047 encoding to be spec-correct),
+    // and this keeps the subject line rendering identically on every mail
+    // client instead of risking mangled characters on an older one.
+    const subject = `News Clipping - ${new Date().toLocaleDateString('en-GB')} (${rows.length} article${rows.length === 1 ? '' : 's'})`;
+
+    const eml = `MIME-Version: 1.0\r\n`
+      + `Subject: ${subject}\r\n`
+      + `Content-Type: text/html; charset="UTF-8"\r\n`
+      + `Content-Transfer-Encoding: 8bit\r\n`
+      + `\r\n`
+      + html;
+
+    const blob = new Blob([eml], { type: 'message/rfc822' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `news-clipping-${new Date().toISOString().slice(0, 10)}.eml`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
     clipCancel();
   };

@@ -60,6 +60,11 @@ OUTPUT_HTML        = ROOT / "dashboard.html"
 TEMPLATE_FOLDER    = str(ROOT / "templates")
 TEMPLATE_FILE      = "dashboard_template.html"
 LOGO_FILE          = ROOT / "assets" / "itau_logo.png"
+COVER_IMAGE_FILES  = [
+    ROOT / "assets" / "cover_energy.jpg",
+    ROOT / "assets" / "cover_mining.jpg",
+    ROOT / "assets" / "cover_pulp_paper.jpg",
+]
 
 
 def _logo_data_uri() -> str:
@@ -68,6 +73,21 @@ def _logo_data_uri() -> str:
         return ""
     b64 = base64.b64encode(LOGO_FILE.read_bytes()).decode("ascii")
     return f"data:image/png;base64,{b64}"
+
+
+def _cover_image_data_uris() -> list:
+    """Landing-page hero background images, embedded inline same as the logo.
+    Pre-resized (max 1800px, JPEG q74) into assets/ from the originals in
+    cover_images/ — that folder itself is never read at build time, matching
+    the logo's own one-time-interactive-resize pattern (Itaú.jpeg -> the
+    small processed assets/itau_logo.png). Missing files are skipped, not
+    fatal — the landing page's own JS handles fewer than 3 images gracefully."""
+    uris = []
+    for f in COVER_IMAGE_FILES:
+        if f.exists():
+            b64 = base64.b64encode(f.read_bytes()).decode("ascii")
+            uris.append(f"data:image/jpeg;base64,{b64}")
+    return uris
 
 # ── China datasets shown on the Economic Data tab ───────────────────────────
 # Each entry drives one chart card; data is fetched live by the browser.
@@ -1422,6 +1442,7 @@ def render(unified_news, news_countries, news_sectors, news_companies, news_sour
         comex_json=_safe_json(comex_data),
         generated=datetime.now(BRASILIA_TZ).strftime("%Y-%m-%d %H:%M"),
         logo_data_uri=_logo_data_uri(),
+        cover_image_uris=_cover_image_data_uris(),
     )
     with open(OUTPUT_HTML, "w", encoding="utf-8") as f:
         f.write(html)
