@@ -34,8 +34,8 @@ def _safe_json(obj) -> Markup:
     autoescape for just this value. (2) json.dumps() itself doesn't escape
     `<`/`>`/`&`, so a news title or company name containing the literal
     substring "</script>" would prematurely close the script tag — a real
-    risk given this JSON embeds scraped news headlines from external RSS/
-    GDELT feeds. The u-escape below neutralizes that without changing the
+    risk given this JSON embeds scraped news headlines from external RSS
+    feeds. The u-escape below neutralizes that without changing the
     decoded value (valid in both JSON string and JS string syntax)."""
     return Markup(json.dumps(obj).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"))
 
@@ -51,7 +51,6 @@ CHINA_EVENTS_FILE  = ROOT / "data" / "china_events.json"
 BRAZIL_NEWS_FILE   = ROOT / "data" / "brazil_news_cache.json"
 BRAZIL_EVENTS_FILE = ROOT / "data" / "brazil_events.json"
 CREDIT_NEWS_FILE   = ROOT / "data" / "credit_news_cache.json"
-GDELT_NEWS_FILE    = ROOT / "data" / "gdelt_news_cache.json"
 FUEL_DATA_FILE     = ROOT / "data" / "fuel_data_cache.json"
 PULP_PAPER_DATA_FILE = ROOT / "data" / "pulp_paper_cache.json"
 MINING_DATA_FILE   = ROOT / "data" / "mining_cache.json"
@@ -584,7 +583,7 @@ def load_credit_news():
 
 
 def load_unified_news():
-    """Single feed combining Portfolio + Brazil + China + Credit + GDELT news.
+    """Single feed combining Portfolio + Brazil + China + Credit news.
 
     Every row gets a `country` tag (Brazil for Portfolio/Brazil/Credit —
     portfolio companies are all B3-listed and credit news is the Brazilian
@@ -622,17 +621,7 @@ def load_unified_news():
         r["origin"]  = "credit"
         r["company"] = None
 
-    gdelt_rows = []
-    if os.path.exists(GDELT_NEWS_FILE):
-        with open(GDELT_NEWS_FILE, "r", encoding="utf-8") as f:
-            gdelt_raw = json.load(f)
-        gdelt_rows, _, _, _ = flatten_news(gdelt_raw)
-    for r in gdelt_rows:
-        r["source"]  = r.pop("provider")
-        r["country"] = "Brazil"
-        r["origin"]  = "gdelt"
-
-    rows = portfolio_rows + brazil_rows + china_rows + credit_rows + gdelt_rows
+    rows = portfolio_rows + brazil_rows + china_rows + credit_rows
     rows.sort(
         key=lambda x: x["datetime"] if x["datetime"] else datetime.min.replace(tzinfo=timezone.utc),
         reverse=True,
@@ -1092,12 +1081,10 @@ def fetch_portfolio_companies() -> dict:
     Cockpit metric already uses, not a new component.
 
     data/portfolio.xlsx's Ticker column is the single source of truth
-    (already used by gdelt_scraper.py for query disambiguation, and by
-    events/events_generator.py for earnings dates — this function reads
-    the same column live at build time rather than hardcoding a ticker
-    list, so a new company only needs a Ticker added in one place). A
-    blank Ticker is skipped entirely — no card, no error — same "blank-
-    safe" convention gdelt_scraper.py already established for this column.
+    (also used by events/events_generator.py for earnings dates — this
+    function reads the same column live at build time rather than
+    hardcoding a ticker list, so a new company only needs a Ticker added
+    in one place). A blank Ticker is skipped entirely — no card, no error.
     Bare B3 codes (e.g. "PETR4") get ".SA" appended automatically; a value
     that already contains a "." (e.g. a future non-B3 listing) is used as-is.
 
@@ -1396,7 +1383,7 @@ def render(unified_news, news_countries, news_sectors, news_companies, news_sour
         cockpit=cockpit,
         cockpit_groups=cockpit_groups,
         cockpit_json=_safe_json(cockpit),
-        # News (unified: Portfolio + Brazil + China + Credit + GDELT)
+        # News (unified: Portfolio + Brazil + China + Credit)
         news=unified_news,
         news_total=len(unified_news),
         news_countries=news_countries,
@@ -1441,7 +1428,7 @@ def render(unified_news, news_countries, news_sectors, news_companies, news_sour
 
 
 def main():
-    print("Loading unified news feed (Portfolio + Brazil + China + Credit + GDELT)...")
+    print("Loading unified news feed (Portfolio + Brazil + China + Credit)...")
     unified_news, news_countries, news_sectors, news_companies, news_sources = load_unified_news()
     print(f"  {len(unified_news)} articles — {len(news_sectors)} sectors, {len(news_companies)} companies, {len(news_sources)} sources")
 

@@ -67,27 +67,38 @@ AMBIGUOUS_NAMES = {"Vale", "Gerdau"}
 
 
 # ── Query builder ────────────────────────────────────────────────────────────
+#
+# One request per specific term (keyword or alias), each combined with the
+# company name via AND — never OR'd together into a single mega-query. Google
+# News RSS ranks a query's results by relevance, not recency, and caps each
+# query at ~100 entries; a broad "company AND (term1 OR term2 OR ... OR
+# term8)" query spends that whole relevance budget on whichever single term
+# is most dominant, which can starve a company of results entirely even
+# though real recent coverage exists. Root-caused for Bradesco: its combined
+# query returned Google's full 100-result cap, but only 1 of those 100 was
+# from a whitelisted domain, and even that one scored below MIN_SCORE because
+# Google's phrase match was against the article body, not the title — a
+# single-keyword test ("Bradesco BBDC4") surfaced a full page of good, recent
+# results the mega-query had been quietly starving out. This is the exact
+# same relevance-dilution problem already diagnosed and fixed for
+# brazil_scraper.py (see that file's module comment) — applied here.
 
-def build_query(company: str, keywords: list[str]) -> str:
-    """
-    Builds a targeted Google News query.
-
-    Strategy: exact company name AND at least one sector-specific or
-    ticker term, so generic language matches are excluded at source.
-    """
+def build_queries(company: str, keywords: list[str]) -> list[str]:
+    """All the Google News queries to run for one company — one per specific
+    term, not one term-1-OR-term-2-OR-... query. No cap on term count: each
+    is its own request now, not competing for one query's relevance budget."""
     aliases = COMPANY_ALIASES.get(company, [])
-    all_specifics = keywords + aliases
+    terms = keywords + aliases
+    if not terms:
+        # No specific terms available at all — fall back to requiring at
+        # least a financial-context word, same safety net as before.
+        return [f'"{company}" (ações OR resultados OR lucro OR bolsa)']
 
-    if all_specifics:
-        # Wrap multi-word terms in quotes, single words bare
-        parts = []
-        for t in all_specifics[:8]:
-            parts.append(f'"{t}"' if " " in t else t)
-        specifics = " OR ".join(parts)
-        return f'"{company}" ({specifics})'
-
-    # Fallback: at least require a financial context word
-    return f'"{company}" (ações OR resultados OR lucro OR bolsa)'
+    queries = []
+    for t in terms:
+        t_fmt = f'"{t}"' if " " in t else t
+        queries.append(f'"{company}" {t_fmt}')
+    return queries
 
 
 def google_news_url(query: str) -> str:
@@ -150,51 +161,66 @@ def relevance_score(title: str, company: str, keywords: list[str]) -> int:
 
 def fetch_articles(company: str, keywords: list[str]) -> tuple[list[dict], int, int]:
     """
-    Fetch, score, and filter articles for one company.
+    Fetch, score, and filter articles for one company — one Google News
+    request per specific term (see build_queries() above), merged and
+    deduped across all of them before scoring/capping.
     Returns (kept_articles, raw_count, kept_count).
     """
-    query = build_query(company, keywords)
-    url   = google_news_url(query)
+    queries = build_queries(company, keywords)
 
-    response = get_with_retry(url, headers=HEADERS, timeout=20)
-    feed = feedparser.parse(response.content)
+    candidates  = []
+    seen_titles = set()
+    seen_links  = set()
+    now = datetime.now(timezone.utc)
 
-    candidates = []
-    seen = set()
-    now  = datetime.now(timezone.utc)
-
-    for entry in feed.entries:
-        title = entry.get("title", "").strip()
-        if not title or title in seen:
-            continue
-        seen.add(title)
-
-        published = entry.get("published", "")
+    for query in queries:
+        url = google_news_url(query)
         try:
-            pub_dt   = parsedate_to_datetime(published)
-            age_days = (now - pub_dt).days
-        except Exception:
-            continue  # unparseable date → discard
-
-        if age_days > MAX_AGE_DAYS:
+            response = get_with_retry(url, headers=HEADERS, timeout=15, retries=1)
+            feed = feedparser.parse(response.content)
+        except Exception as e:
+            print(f"      {query}: ERROR — {e}")
+            time.sleep(0.4)
             continue
 
-        source_info = entry.get("source", {})
-        if not is_trusted(source_info.get("href", "")):
-            continue  # hard gate: only whitelisted domains
+        for entry in feed.entries:
+            title = entry.get("title", "").strip()
+            link  = entry.get("link", "")
+            if not title or title in seen_titles or (link and link in seen_links):
+                continue
 
-        source = source_info.get("title", "Google News")
-        score  = relevance_score(title, company, keywords)
+            published = entry.get("published", "")
+            try:
+                pub_dt   = parsedate_to_datetime(published)
+                age_days = (now - pub_dt).days
+            except Exception:
+                continue  # unparseable date → discard
 
-        candidates.append({
-            "title":     title,
-            "link":      entry.get("link", ""),
-            "published": published,
-            "source":    source,
-            "summary":   entry.get("summary", ""),
-            "_score":    score,
-            "_pub_dt":   pub_dt,
-        })
+            if age_days > MAX_AGE_DAYS:
+                continue
+
+            source_info = entry.get("source", {})
+            if not is_trusted(source_info.get("href", "")):
+                continue  # hard gate: only whitelisted domains
+
+            seen_titles.add(title)
+            if link:
+                seen_links.add(link)
+
+            source = source_info.get("title", "Google News")
+            score  = relevance_score(title, company, keywords)
+
+            candidates.append({
+                "title":     title,
+                "link":      link,
+                "published": published,
+                "source":    source,
+                "summary":   entry.get("summary", ""),
+                "_score":    score,
+                "_pub_dt":   pub_dt,
+            })
+
+        time.sleep(0.4)
 
     # Keep only articles above score threshold, sort newest first
     filtered = [a for a in candidates if a["_score"] >= MIN_SCORE]
@@ -278,12 +304,16 @@ def main():
         with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
             existing_cache = json.load(f)
 
-    news = {}
+    # Start from the existing cache and checkpoint after every company (not
+    # once at the very end) — per-keyword querying means each company now
+    # costs several requests instead of one, so a mid-run failure/timeout
+    # should lose at most the in-flight company, not the whole run.
+    news = dict(existing_cache)
     now  = datetime.now(timezone.utc)
 
     print()
     print("=" * 60)
-    print("Fetching Google News  (last 7 days)")
+    print("Fetching Google News  (last 7 days, per-keyword queries)")
     print("=" * 60)
 
     for _, row in df.iterrows():
@@ -295,8 +325,8 @@ def main():
         if not pd.isna(kw_cell) and str(kw_cell).strip():
             keywords = [x.strip() for x in str(kw_cell).split(",") if x.strip()]
 
-        print(f"\n  {company}")
-        print(f"  Query: {build_query(company, keywords)}")
+        queries = build_queries(company, keywords)
+        print(f"\n  {company}  ({len(queries)} queries)")
 
         try:
             new_articles, raw, kept = fetch_articles(company, keywords)
@@ -318,14 +348,15 @@ def main():
             "articles":      articles,
         }
 
+        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+            json.dump(news, f, indent=4, ensure_ascii=False)
+
         time.sleep(1.5)
 
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        json.dump(news, f, indent=4, ensure_ascii=False)
-
+    total = sum(len(v["articles"]) for v in news.values())
     print()
     print("=" * 60)
-    print("Done")
+    print(f"Done — {total} articles across {len(news)} companies")
     print(f"Saved → {OUTPUT_FILE}")
     print("=" * 60)
 

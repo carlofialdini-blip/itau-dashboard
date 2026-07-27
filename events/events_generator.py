@@ -56,19 +56,18 @@ COPOM_SCHEDULE: dict[int, list[tuple[str, str]]] = {
 
 # Tickers come from portfolio.xlsx's own Ticker column (see build_ticker_map()
 # below) — that column is the single source of truth for this project (also
-# read by scrapers/gdelt_scraper.py for query disambiguation, and by
-# core/generate_dashboard.py's fetch_portfolio_companies() for the Cockpit
-# stock cards). Previously this was a separate hardcoded dict duplicating the
-# same 10 companies' tickers; removed in favor of reading the one real source,
-# so a new company only needs a Ticker added in portfolio.xlsx, not here too.
+# read by core/generate_dashboard.py's fetch_portfolio_companies() for the
+# Cockpit stock cards). Previously this was a separate hardcoded dict
+# duplicating the same 10 companies' tickers; removed in favor of reading
+# the one real source, so a new company only needs a Ticker added in
+# portfolio.xlsx, not here too.
 
 
 def build_ticker_map(df: pd.DataFrame) -> dict[str, str]:
     """Company name -> full Yahoo Finance ticker, from portfolio.xlsx's
     Ticker column. Bare B3 codes (e.g. "PETR4") get ".SA" appended; a value
     that already contains a "." is used as-is. Blank tickers are simply
-    absent from the returned dict (blank-safe, same convention
-    gdelt_scraper.py already established for this column)."""
+    absent from the returned dict (blank-safe)."""
     ticker_map = {}
     for _, row in df.iterrows():
         company = str(row.get("Company") or "").strip()
