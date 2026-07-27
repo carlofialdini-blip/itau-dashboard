@@ -20,6 +20,8 @@ from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parent
 
@@ -52,7 +54,7 @@ def run():
 
     for i, (label, cmd) in enumerate(STEPS, 1):
         print(f"  [{i}/{total}] {label}...")
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=600)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
         if result.returncode != 0:
             failed.append(label)
             print(f"        FAILED — {label} (continuing with the rest):")

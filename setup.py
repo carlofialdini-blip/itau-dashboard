@@ -22,6 +22,8 @@ from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parent
 
@@ -36,7 +38,7 @@ def run():
     print("  Installing dependencies...")
     result = subprocess.run(
         [sys.executable, "-m", "pip", "install", "-r", str(ROOT / "requirements.txt"), "-q"],
-        capture_output=True, text=True, encoding="utf-8",
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     if result.returncode != 0:
         print("\n  ERROR installing dependencies:")
