@@ -336,12 +336,46 @@ def build_db(df: pd.DataFrame) -> dict:
     }
 
 
+# IBGE's PIM-PF (Pesquisa Industrial Mensal - Produção Física), SIDRA table
+# 8888 — a monthly Brazil industrial-production INDEX (2022=100), same
+# recency-complement role as mining_scraper.py's use of it, live-verified
+# current through March 2026, well past FAOSTAT's 2024 ceiling above. Not a
+# substitute for FAOSTAT's world tonnage (Brazil-only, an index not
+# absolute tonnage) — the current-month complement, alongside the public-
+# company stock panel. Code 129324 = "3.17 Fabricação de celulose, papel e
+# produtos de papel," confirmed via a live query against the table's own
+# variable list.
+PIMPF_URL = "https://apisidra.ibge.gov.br/values/t/8888/n1/all/v/12606/p/all/c544/{code}"
+PIMPF_PULP_PAPER_CODE = "129324"
+
+
+def fetch_brazil_index() -> dict:
+    r = get_with_retry(PIMPF_URL.format(code=PIMPF_PULP_PAPER_CODE), timeout=30)
+    rows = r.json()[1:]
+    data = {}
+    for row in rows:
+        try:
+            data[row["D3C"]] = float(row["V"])  # D3C = "YYYYMM"
+        except (KeyError, TypeError, ValueError):
+            continue
+    return {
+        "label": "Pulp, Paper & Paper Products Manufacturing — Brazil",
+        "unit": "Index, 2022=100",
+        "source": "IBGE - Pesquisa Industrial Mensal (PIM-PF)",
+        "data": data,
+    }
+
+
 def main():
     print("Fetching FAOSTAT Forestry data (pulp & paper slice)...")
     df = fetch_df()
     print(f"  {len(df):,} rows parsed (filtered to {len(ALL_ITEM_CODES)} item codes)")
 
     db = build_db(df)
+
+    print("Fetching IBGE PIM-PF (Brazil pulp & paper index, monthly)...")
+    db["brazil_index"] = fetch_brazil_index()
+    print(f"  {len(db['brazil_index']['data'])} monthly points")
 
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:

@@ -2,6 +2,8 @@ pandas
 openpyxl
 feedparser
 requests
+urllib3
 jinja2
+markupsafe
 yfinance
 lxml

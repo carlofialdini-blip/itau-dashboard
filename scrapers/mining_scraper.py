@@ -177,10 +177,45 @@ def compute_concentration(world: dict, countries: dict) -> dict:
     return out
 
 
+# IBGE's PIM-PF (Pesquisa Industrial Mensal - Produção Física), SIDRA table
+# 8888 — a monthly Brazil industrial-production INDEX (2022=100), live-
+# verified current through March 2026, well past BGS's 2024 ceiling above.
+# This is NOT a substitute for BGS's world tonnage/country rankings (it's
+# Brazil-only, and an index, not absolute production) — it's the current-
+# month complement, same role the public-company stock panel already
+# plays, just for the underlying industrial activity instead of share
+# prices. Code 129315 = "2 Indústrias extrativas" (extractive industries),
+# the closest PIM-PF category to mining — confirmed via a live query
+# against the table's own variable list, not assumed from the code number.
+PIMPF_URL = "https://apisidra.ibge.gov.br/values/t/8888/n1/all/v/12606/p/all/c544/{code}"
+PIMPF_MINING_CODE = "129315"
+
+
+def fetch_brazil_index() -> dict:
+    r = get_with_retry(PIMPF_URL.format(code=PIMPF_MINING_CODE), timeout=30)
+    rows = r.json()[1:]
+    data = {}
+    for row in rows:
+        try:
+            data[row["D3C"]] = float(row["V"])  # D3C = "YYYYMM"
+        except (KeyError, TypeError, ValueError):
+            continue
+    return {
+        "label": "Extractive Industries (mining) — Brazil",
+        "unit": "Index, 2022=100",
+        "source": "IBGE - Pesquisa Industrial Mensal (PIM-PF)",
+        "data": data,
+    }
+
+
 def main():
     print("Fetching BGS World Mineral Statistics (hard commodities slice)...")
     world, countries, items, years = build_db()
     concentration = compute_concentration(world, countries)
+
+    print("Fetching IBGE PIM-PF (Brazil extractive-industries index, monthly)...")
+    brazil_index = fetch_brazil_index()
+    print(f"  {len(brazil_index['data'])} monthly points")
 
     db = {
         "years": years,
@@ -188,6 +223,7 @@ def main():
         "countries": countries,
         "concentration": concentration,
         "items": items,
+        "brazil_index": brazil_index,
         "_meta": {
             "source": "British Geological Survey (BGS) - World Mineral Statistics",
             "source_url": SOURCE_PAGE,

@@ -1,22 +1,46 @@
 import base64
 import json
 import os
+import re
 import sys
 from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pandas as pd
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from jinja2 import Environment, FileSystemLoader
+from markupsafe import Markup
 
 from net_utils import get_with_retry
 
+
+def _safe_json(obj) -> Markup:
+    """json.dumps() wrapped for safe embedding inside a <script> block.
+
+    Two distinct things this guards against, found in a production-
+    readiness audit: (1) the Jinja Environment below has autoescape on
+    (added in the same audit — every {{ a.title }}-style interpolation of
+    external news/data text was previously rendered completely
+    unescaped), which would otherwise HTML-escape these JSON blobs and
+    corrupt them (browsers don't HTML-decode <script> contents, so
+    `&amp;` would become a literal part of a JS string instead of `&`).
+    Wrapping in Markup() marks this specific string as pre-safe, bypassing
+    autoescape for just this value. (2) json.dumps() itself doesn't escape
+    `<`/`>`/`&`, so a news title or company name containing the literal
+    substring "</script>" would prematurely close the script tag — a real
+    risk given this JSON embeds scraped news headlines from external RSS/
+    GDELT feeds. The u-escape below neutralizes that without changing the
+    decoded value (valid in both JSON string and JS string syntax)."""
+    return Markup(json.dumps(obj).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"))
+
 ROOT = Path(__file__).resolve().parent.parent
+PORTFOLIO_XLSX = ROOT / "data" / "portfolio.xlsx"
 
 MAX_NEWS_AGE_DAYS = 7   # keep articles up to 7 days old
 
@@ -31,6 +55,8 @@ GDELT_NEWS_FILE    = ROOT / "data" / "gdelt_news_cache.json"
 FUEL_DATA_FILE     = ROOT / "data" / "fuel_data_cache.json"
 PULP_PAPER_DATA_FILE = ROOT / "data" / "pulp_paper_cache.json"
 MINING_DATA_FILE   = ROOT / "data" / "mining_cache.json"
+AGRICULTURE_DATA_FILE = ROOT / "data" / "agriculture_cache.json"
+COMEX_DATA_FILE    = ROOT / "data" / "comex_cache.json"
 OUTPUT_HTML        = ROOT / "dashboard.html"
 TEMPLATE_FOLDER    = str(ROOT / "templates")
 TEMPLATE_FILE      = "dashboard_template.html"
@@ -1055,6 +1081,63 @@ def fetch_cockpit_data():
     return data
 
 
+def _slugify_cockpit_key(name: str) -> str:
+    return "pf_" + re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+
+
+def fetch_portfolio_companies() -> dict:
+    """One Cockpit card per publicly-traded portfolio company, keyed for
+    merging directly into COCKPIT_DATA / cockpit_groups — reuses the exact
+    same _ck_yf()/_ck_make() pair and .mkt-card rendering every other
+    Cockpit metric already uses, not a new component.
+
+    data/portfolio.xlsx's Ticker column is the single source of truth
+    (already used by gdelt_scraper.py for query disambiguation, and by
+    events/events_generator.py for earnings dates — this function reads
+    the same column live at build time rather than hardcoding a ticker
+    list, so a new company only needs a Ticker added in one place). A
+    blank Ticker is skipped entirely — no card, no error — same "blank-
+    safe" convention gdelt_scraper.py already established for this column.
+    Bare B3 codes (e.g. "PETR4") get ".SA" appended automatically; a value
+    that already contains a "." (e.g. a future non-B3 listing) is used as-is.
+
+    Every ticker live-verified before wiring in, same standard as every
+    prior company panel — caught one real rename this way: Embraer's B3
+    ticker changed from EMBR3 to EMBJ3 (EMBR3.SA now 404s on Yahoo
+    Finance), confirmed via yf.Ticker().info's shortName and corrected
+    directly in portfolio.xlsx, not papered over here.
+    """
+    import time as _time
+    print("  Fetching portfolio company stock performance...")
+    result = {}
+    if not os.path.exists(PORTFOLIO_XLSX):
+        return result
+    df = pd.read_excel(PORTFOLIO_XLSX)
+    for _, row in df.iterrows():
+        name = str(row.get("Company") or "").strip()
+        ticker_raw = str(row.get("Ticker") or "").strip()
+        # Defensive: a stray duplicate-header row (literal "Company"/
+        # "Ticker" as data) was found and removed from portfolio.xlsx
+        # itself, but events/events_generator.py's main() already guards
+        # against this same row reappearing — match that same defensive
+        # filter here rather than trust the spreadsheet stays clean
+        # forever (a caught-in-testing gap: without this, a stray row
+        # would fetch a nonexistent "TICKER.SA" ticker and render a
+        # confusing "Company: N/A" ghost card instead of being skipped).
+        if not name or name.lower() == "nan" or name == "Company":
+            continue
+        if not ticker_raw or ticker_raw.lower() == "nan" or ticker_raw == "Ticker":
+            continue
+        ticker = ticker_raw if "." in ticker_raw else f"{ticker_raw}.SA"
+        series = _ck_yf(ticker, period="6mo")
+        item = _ck_make(name, "", "#2563eb", series, show_chart=True, source="Yahoo Finance")
+        item["ticker"] = ticker
+        result[_slugify_cockpit_key(name)] = item
+        print(f"    {name} ({ticker}): {item['current_fmt'] or 'N/A'}")
+        _time.sleep(0.3)
+    return result
+
+
 # ── Pulp & Paper: public-company performance ────────────────────────────────
 # FAOSTAT (below) is annual and necessarily ~1 year behind — there is no
 # monthly/quarterly version of that dataset, industry-wide. This is the
@@ -1141,13 +1224,59 @@ def fetch_mining_companies() -> list:
     return result
 
 
+# ── Agriculture: public-company performance ─────────────────────────────────
+# Same recency-complement role as PULP_COMPANIES/MINING_COMPANIES: CONAB/
+# IBGE data below is monthly-at-best (much of it annual), this is the live
+# daily layer on top of it. Every ticker verified live before wiring in —
+# same standard as every prior company panel. Caught two real mislabels
+# this way, same class as JET=F/GOLD: "JBSS3.SA" (JBS's old B3 common-share
+# ticker) returns nothing — JBS delisted its B3 common shares in June 2025
+# in favor of BDRs (JBSS32) and now primary-lists on the NYSE as "JBS";
+# and "MRFG3.SA" (Marfrig's long-used ticker) 404s — Marfrig's B3 ticker is
+# now "MBRF3.SA". Both confirmed via yf.Ticker().info's shortName, not
+# assumed from the familiar old symbol.
+AGRICULTURE_COMPANIES = [
+    ("JBS",     "JBS",                 "Brazil / United States"),
+    ("MBRF3.SA","Marfrig",             "Brazil"),
+    ("BEEF3.SA","Minerva",             "Brazil"),
+    ("SLCE3.SA","SLC Agrícola",        "Brazil"),
+    ("AGRO3.SA","BrasilAgro",          "Brazil"),
+    ("SMTO3.SA","São Martinho",        "Brazil"),
+    ("RAIZ4.SA","Raízen",              "Brazil"),
+    ("KEPL3.SA","Kepler Weber",        "Brazil"),
+    ("TTEN3.SA","3tentos",             "Brazil"),
+    ("SOJA3.SA","Boa Safra Sementes",  "Brazil"),
+    ("CAML3.SA","Camil Alimentos",     "Brazil"),
+    ("ADM",     "Archer-Daniels-Midland", "United States"),
+    ("BG",      "Bunge",               "United States"),
+    ("CTVA",    "Corteva",             "United States"),
+    ("DE",      "Deere & Company",     "United States"),
+]
+
+
+def fetch_agriculture_companies() -> list:
+    import time as _time
+    print("  Fetching agriculture public-company performance...")
+    result = []
+    for ticker, name, country in AGRICULTURE_COMPANIES:
+        series = _ck_yf(ticker, period="6mo")
+        item = _ck_make(name, "", "#65a30d", series, show_chart=True, source="Yahoo Finance")
+        item["ticker"] = ticker
+        item["country"] = country
+        result.append(item)
+        print(f"    {name} ({ticker}): {item['current_fmt'] or 'N/A'}")
+        _time.sleep(0.3)
+    return result
+
+
 def load_mining_data() -> dict:
     """Reads the BGS mining snapshot written by scrapers/mining_scraper.py.
 
     Same fault-isolation as load_pulp_paper_data(): honest all-empty shape
     if the step hasn't run yet or failed.
     """
-    empty = {"years": [], "world": {}, "countries": {}, "concentration": {}, "items": {}}
+    empty = {"years": [], "world": {}, "countries": {}, "concentration": {}, "items": {},
+              "brazil_index": {"label": "", "unit": "", "source": "", "data": {}}}
     if not os.path.exists(MINING_DATA_FILE):
         return empty
     with open(MINING_DATA_FILE, "r", encoding="utf-8") as f:
@@ -1180,10 +1309,58 @@ def load_pulp_paper_data() -> dict:
     empty = {"years": [], "world": {}, "countries": {}, "concentration": {},
               "recycled_rate": {"world": {}, "countries": {}},
               "structural_mix": {"pulp_by_type": {}, "paper_by_type": {}},
-              "items": {}}
+              "items": {},
+              "brazil_index": {"label": "", "unit": "", "source": "", "data": {}}}
     if not os.path.exists(PULP_PAPER_DATA_FILE):
         return empty
     with open(PULP_PAPER_DATA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_agriculture_data() -> dict:
+    """Reads the CONAB/IBGE/MAPA/BCB snapshot written by
+    scrapers/agriculture_scraper.py.
+
+    Same fault-isolation as load_mining_data(): this fetch runs as its own
+    step in update_dashboard.py, and an honest all-empty shape is returned
+    if it hasn't run yet or failed, rather than breaking the whole build.
+    """
+    empty = {
+        "crops": {"unit": "", "items": {}, "world": {}, "countries": {}},
+        "livestock": {"unit": "", "items": {}, "world": {}, "countries": {}},
+        "trade": {"unit": "", "items": {}, "world": {}},
+        "prices": {"minimum_price_unit": "", "market_price_unit": "", "minimum": {}, "market": {}},
+        "logistics": {"unit": "", "by_year": {}},
+        "storage": {"unit": "", "national_total_t": 0, "national_warehouse_count": 0, "by_state": {}},
+        "costs": {"unit": "", "by_product": {}},
+        "credit": {"unit": "", "series_id": None, "title": "", "data": {}},
+        "insurance": {"unit": "", "note": "", "by_state": {}, "by_crop": {}},
+    }
+    if not os.path.exists(AGRICULTURE_DATA_FILE):
+        return empty
+    with open(AGRICULTURE_DATA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_comex_data() -> dict:
+    """Reads the MDIC Comex Stat trade snapshot written by
+    scrapers/comex_scraper.py — real monthly export volumes for Mining's
+    and Pulp & Paper's headline products, plus Agriculture's crop exports
+    and fertilizer imports. Same fault-isolation as the other load_*_data()
+    functions: honest all-empty shape if the step hasn't run yet or failed.
+    """
+    def _empty_section():
+        return {"items": {}, "monthly": {}, "world": {}, "countries": {}}
+
+    empty = {
+        "unit": "",
+        "mining": _empty_section(),
+        "pulp_paper": _empty_section(),
+        "agriculture": {"exports": _empty_section(), "fertilizer_imports": _empty_section()},
+    }
+    if not os.path.exists(COMEX_DATA_FILE):
+        return empty
+    with open(COMEX_DATA_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -1195,14 +1372,30 @@ def render(unified_news, news_countries, news_sectors, news_companies, news_sour
            cockpit,
            fuel_data,
            pulp_paper_data, pulp_news, pulp_companies,
-           mining_data, mining_news, mining_companies):
-    env      = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER))
+           mining_data, mining_news, mining_companies,
+           agriculture_data, agriculture_news, agriculture_companies,
+           comex_data):
+    # autoescape=True found missing in a production-readiness audit — the
+    # plain Environment() constructor defaults to NO escaping (unlike
+    # Flask's render_template, which enables it automatically), so every
+    # {{ a.title }}/{{ a.source }}/etc. interpolation of scraped news text
+    # was rendering completely unescaped. See _safe_json() above for how
+    # the ~16 pre-serialized JSON blobs stay exempt (they're JS source,
+    # not HTML, and were already safe in a different way before this).
+    env      = Environment(loader=FileSystemLoader(TEMPLATE_FOLDER), autoescape=True)
     template = env.get_template(TEMPLATE_FILE)
+    # Portfolio Companies is one more entry in the same groups list Cockpit
+    # already loops over — added here (not a new template block) so a
+    # portfolio with zero tickers renders exactly as before, no empty
+    # group. Keys are whatever fetch_portfolio_companies() actually
+    # produced, so this doesn't need to know company names/count.
+    portfolio_keys = [k for k in cockpit if k.startswith("pf_")]
+    cockpit_groups = COCKPIT_GROUPS + ([("Portfolio Companies", portfolio_keys)] if portfolio_keys else [])
     html = template.render(
         # Cockpit
         cockpit=cockpit,
-        cockpit_groups=COCKPIT_GROUPS,
-        cockpit_json=json.dumps(cockpit),
+        cockpit_groups=cockpit_groups,
+        cockpit_json=_safe_json(cockpit),
         # News (unified: Portfolio + Brazil + China + Credit + GDELT)
         news=unified_news,
         news_total=len(unified_news),
@@ -1214,25 +1407,32 @@ def render(unified_news, news_countries, news_sectors, news_companies, news_sour
         events=unified_events,
         event_months=event_months,
         # Economic Data (Brazil + China + Credit, merged client-side)
-        china_datasets_json=json.dumps(CHINA_DATASETS),
-        china_charts_json=json.dumps(china_charts),
-        brazil_datasets_json=json.dumps(BRAZIL_DATASETS),
-        brazil_charts_json=json.dumps(brazil_charts),
-        credit_datasets_json=json.dumps(CREDIT_DATASETS),
-        credit_charts_json=json.dumps(credit_charts),
+        china_datasets_json=_safe_json(CHINA_DATASETS),
+        china_charts_json=_safe_json(china_charts),
+        brazil_datasets_json=_safe_json(BRAZIL_DATASETS),
+        brazil_charts_json=_safe_json(brazil_charts),
+        credit_datasets_json=_safe_json(CREDIT_DATASETS),
+        credit_charts_json=_safe_json(credit_charts),
         num_econ_datasets=len(CHINA_DATASETS) + len(BRAZIL_DATASETS) + len(CREDIT_DATASETS),
         # Other Datasets (China catalog browser)
-        china_catalog_json=json.dumps(china_catalog),
+        china_catalog_json=_safe_json(china_catalog),
         # Economic Data > Energy sub-page (ANP fuel-distribution data)
-        fuel_data_json=json.dumps(fuel_data),
+        fuel_data_json=_safe_json(fuel_data),
         # Economic Data > Pulp & Paper sub-page (FAOSTAT data + linked news)
-        pulp_paper_json=json.dumps(pulp_paper_data),
+        pulp_paper_json=_safe_json(pulp_paper_data),
         pulp_news=pulp_news,
-        pulp_companies_json=json.dumps(pulp_companies),
+        pulp_companies_json=_safe_json(pulp_companies),
         # Economic Data > Mining sub-page (BGS data + linked news)
-        mining_json=json.dumps(mining_data),
+        mining_json=_safe_json(mining_data),
         mining_news=mining_news,
-        mining_companies_json=json.dumps(mining_companies),
+        mining_companies_json=_safe_json(mining_companies),
+        # Economic Data > Agriculture sub-page (CONAB/IBGE/MAPA/BCB data + linked news)
+        agriculture_json=_safe_json(agriculture_data),
+        agriculture_news=agriculture_news,
+        agriculture_companies_json=_safe_json(agriculture_companies),
+        # Real, current-month trade volumes (MDIC Comex Stat) — a shared
+        # complement read by Mining/Pulp & Paper/Agriculture's JS alike
+        comex_json=_safe_json(comex_data),
         generated=datetime.now(BRASILIA_TZ).strftime("%Y-%m-%d %H:%M"),
         logo_data_uri=_logo_data_uri(),
     )
@@ -1263,6 +1463,7 @@ def main():
 
     print("Fetching cockpit market data...")
     cockpit = fetch_cockpit_data()
+    cockpit.update(fetch_portfolio_companies())
 
     print("Loading fuel-distribution data (ANP)...")
     fuel_data = load_fuel_data()
@@ -1287,6 +1488,21 @@ def main():
     mining_news = [a for a in unified_news if a.get("sector") == "Mining & Steel"][:20]
     mining_companies = fetch_mining_companies()
 
+    print("Loading agriculture data (CONAB/IBGE/MAPA/BCB)...")
+    agriculture_data = load_agriculture_data()
+    print(f"  {len(agriculture_data.get('crops', {}).get('items', {}))} crops, "
+          f"{len(agriculture_data.get('livestock', {}).get('items', {}))} herd types")
+    # Reuses the unified news feed already loaded above — brazil_scraper.py
+    # already has an "Agriculture" sector, so this is a filter, not a new fetch.
+    agriculture_news = [a for a in unified_news if a.get("sector") == "Agriculture"][:20]
+    agriculture_companies = fetch_agriculture_companies()
+
+    print("Loading trade data (MDIC Comex Stat)...")
+    comex_data = load_comex_data()
+    print(f"  {len(comex_data.get('mining', {}).get('items', {}))} mining products, "
+          f"{len(comex_data.get('pulp_paper', {}).get('items', {}))} pulp product, "
+          f"{len(comex_data.get('agriculture', {}).get('exports', {}).get('items', {}))} agri export products")
+
     render(unified_news, news_countries, news_sectors, news_companies, news_sources,
            unified_events, event_months,
            china_charts, china_catalog,
@@ -1295,7 +1511,9 @@ def main():
            cockpit,
            fuel_data,
            pulp_paper_data, pulp_news, pulp_companies,
-           mining_data, mining_news, mining_companies)
+           mining_data, mining_news, mining_companies,
+           agriculture_data, agriculture_news, agriculture_companies,
+           comex_data)
     print("\ndashboard.html generated successfully.")
 
 

@@ -87,9 +87,6 @@ div.hdr-mark { background: var(--accent); }
 .page-btn.active.datasets { color: var(--cn-red); }
 
 .hdr-right { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-.live-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--green); text-transform: uppercase; letter-spacing: .8px; }
-.live-dot   { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 .hdr-ts { font-size: 11px; color: var(--text-muted); }
 
 /* ── STATS BAR ── */
@@ -697,9 +694,8 @@ div.hdr-mark { background: var(--accent); }
   padding: 14px 24px; background: var(--bg-2); border-bottom: 1px solid var(--border);
 }
 #econPulpView .pulp-filters .f-tag { margin-bottom: 0; }
-#econPulpView .pulp-year-select {
-  background: var(--bg); border: 1px solid var(--border-2); color: var(--text);
-  padding: 5px 10px; border-radius: 6px; font-family: inherit; font-size: 12px; cursor: pointer;
+#econPulpView .pulp-year-value {
+  color: var(--text); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
 #econPulpView .pulp-filter-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .6px; }
 #econPulpView .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; padding: 16px 24px 0; }
@@ -737,9 +733,8 @@ div.hdr-mark { background: var(--accent); }
   padding: 14px 24px; background: var(--bg-2); border-bottom: 1px solid var(--border);
 }
 #econMiningView .mining-filters .f-tag { margin-bottom: 0; }
-#econMiningView .mining-year-select {
-  background: var(--bg); border: 1px solid var(--border-2); color: var(--text);
-  padding: 5px 10px; border-radius: 6px; font-family: inherit; font-size: 12px; cursor: pointer;
+#econMiningView .mining-year-value {
+  color: var(--text); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
 #econMiningView .mining-filter-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .6px; }
 #econMiningView .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; padding: 16px 24px 0; }
@@ -767,6 +762,43 @@ div.hdr-mark { background: var(--accent); }
 #econMiningView .mining-news-row a:hover { color: var(--accent); }
 #econMiningView .mining-news-meta { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
 #econMiningView .mining-empty { padding: 24px; text-align: center; color: var(--text-muted); font-size: 12.5px; }
+
+/* ── Economic Data / Agriculture sub-page — same scoped-block pattern as
+   Pulp & Paper/Mining above. ── */
+#econAgricultureView .agri-filters {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 14px 24px; background: var(--bg-2); border-bottom: 1px solid var(--border);
+}
+#econAgricultureView .agri-filters .f-tag { margin-bottom: 0; }
+#econAgricultureView .agri-year-value {
+  color: var(--text); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+#econAgricultureView .agri-filter-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .6px; }
+#econAgricultureView .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; padding: 16px 24px 0; }
+#econAgricultureView .kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; position: relative; overflow: hidden; }
+#econAgricultureView .kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+#econAgricultureView .kpi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 500; margin-bottom: 8px; }
+#econAgricultureView .kpi-value { font-size: 24px; font-weight: 700; color: var(--text); letter-spacing: -.5px; line-height: 1; font-variant-numeric: tabular-nums; }
+#econAgricultureView .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+#econAgricultureView .kpi-sub.pos { color: var(--green); }
+#econAgricultureView .kpi-sub.neg { color: var(--cn-red); }
+#econAgricultureView .agri-section { padding: 20px 24px 4px; }
+#econAgricultureView .agri-section-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+#econAgricultureView .agri-section-sub { font-size: 11.5px; color: var(--text-muted); margin-bottom: 12px; }
+#econAgricultureView .agri-tables { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; padding: 0 24px 20px; }
+#econAgricultureView .agri-table-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+#econAgricultureView .agri-table-title { font-size: 11.5px; font-weight: 700; color: var(--text); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+#econAgricultureView .agri-news-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; margin: 0 24px 24px; overflow: hidden; }
+#econAgricultureView .agri-news-hdr { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg-2); }
+#econAgricultureView .agri-news-hdr-title { font-size: 12.5px; font-weight: 700; color: var(--text); }
+#econAgricultureView .agri-news-hdr a { font-size: 11px; color: var(--accent); text-decoration: none; font-weight: 600; }
+#econAgricultureView .agri-news-hdr a:hover { text-decoration: underline; }
+#econAgricultureView .agri-news-row { display: flex; gap: 10px; align-items: baseline; padding: 9px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+#econAgricultureView .agri-news-row:last-child { border-bottom: none; }
+#econAgricultureView .agri-news-row a { color: var(--text); text-decoration: none; font-weight: 500; flex: 1; min-width: 0; }
+#econAgricultureView .agri-news-row a:hover { color: var(--accent); }
+#econAgricultureView .agri-news-meta { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+#econAgricultureView .agri-empty { padding: 24px; text-align: center; color: var(--text-muted); font-size: 12.5px; }
 </style>
 </head>
 <body>
@@ -788,7 +820,7 @@ div.hdr-mark { background: var(--accent); }
     </div>
     {% endif %}
     <div>
-      <div class="hdr-name">Portfolio Intelligence</div>
+      <h1 class="hdr-name">Portfolio Intelligence</h1>
       <div class="hdr-sub">Market Monitor</div>
     </div>
   </div>
@@ -802,7 +834,6 @@ div.hdr-mark { background: var(--accent); }
   </div>
 
   <div class="hdr-right">
-    <div class="live-badge"><div class="live-dot"></div>Live</div>
     <div class="hdr-ts">Updated {{ generated }}</div>
   </div>
 </header>
@@ -822,7 +853,7 @@ div.hdr-mark { background: var(--accent); }
     {% for group_name, keys in cockpit_groups %}
     <div class="mkt-group">
       <div class="mkt-group-lbl">{{ group_name }}</div>
-      <div class="mkt-grid{% if group_name == 'Commodities' %} mkt-grid-wrap{% endif %}" style="grid-template-columns:{% if group_name == 'Commodities' %}repeat(auto-fill, minmax(200px, 1fr)){% else %}repeat({{ keys|length }},1fr){% endif %}">
+      <div class="mkt-grid{% if group_name in ('Commodities', 'Portfolio Companies') %} mkt-grid-wrap{% endif %}" style="grid-template-columns:{% if group_name in ('Commodities', 'Portfolio Companies') %}repeat(auto-fill, minmax(200px, 1fr)){% else %}repeat({{ keys|length }},1fr){% endif %}">
         {% for key in keys %}
         {% set item = cockpit[key] %}
         {% if item.show_chart %}
@@ -878,7 +909,7 @@ div.hdr-mark { background: var(--accent); }
       </div>
       <div class="search-wrap">
         <svg class="search-icon" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
-        <input type="text" id="newsSearch" class="search-input" placeholder="Search headlines…" autocomplete="off">
+        <input type="text" id="newsSearch" class="search-input" placeholder="Search headlines…" aria-label="Search headlines" autocomplete="off">
       </div>
       <div class="filter-group">
         <div class="filter-group-title">Country</div>
@@ -894,7 +925,7 @@ div.hdr-mark { background: var(--accent); }
       </div>
       <div class="filter-group">
         <div class="filter-group-title">Source <span class="filter-group-count" id="newsSourceCount"></span></div>
-        <input type="text" id="newsSourceSearch" class="src-search" placeholder="Filter sources…" autocomplete="off">
+        <input type="text" id="newsSourceSearch" class="src-search" placeholder="Filter sources…" aria-label="Filter sources" autocomplete="off">
         <div class="src-list" id="newsSourceList">
           {% for s in news_sources %}
           <label class="src-item"><input type="checkbox" value="{{ s }}" class="src-checkbox"><span>{{ s }}</span></label>
@@ -952,6 +983,7 @@ div.hdr-mark { background: var(--accent); }
     <button class="econ-subnav-btn" id="econSubBtnEnergy" onclick="econSubnavShow('energy')">⛽ Energy — Fuel Distribution</button>
     <button class="econ-subnav-btn" id="econSubBtnPulp" onclick="econSubnavShow('pulp')">🪵 Pulp &amp; Paper</button>
     <button class="econ-subnav-btn" id="econSubBtnMining" onclick="econSubnavShow('mining')">⛏️ Mining</button>
+    <button class="econ-subnav-btn" id="econSubBtnAgriculture" onclick="econSubnavShow('agriculture')">🌾 Agriculture</button>
   </div>
 
   <div id="econOverviewView">
@@ -980,7 +1012,7 @@ div.hdr-mark { background: var(--accent); }
           <button class="modal-close" onclick="fecharModal()">✕</button>
         </div>
         <div class="modal-search">
-          <input type="text" id="modal-search-input" placeholder="Buscar empresa…" oninput="renderModal()">
+          <input type="text" id="modal-search-input" placeholder="Buscar empresa…" aria-label="Buscar empresa" oninput="renderModal()">
         </div>
         <div class="modal-actions">
           <button class="modal-action-btn" onclick="selAll()">Selecionar todas</button>
@@ -1138,8 +1170,8 @@ div.hdr-mark { background: var(--accent); }
       <span class="f-tag active" data-pulp-cat="pulp"><span class="f-dot" style="background:#2563eb"></span><span>Pulp</span></span>
       <span class="f-tag" data-pulp-cat="paper"><span class="f-dot" style="background:#16a34a"></span><span>Paper &amp; Paperboard</span></span>
       <span class="f-tag" data-pulp-cat="recovered"><span class="f-dot" style="background:#d97706"></span><span>Recovered Fibre</span></span>
-      <span class="pulp-filter-label" style="margin-left:12px">Ranking year</span>
-      <select id="pulpYearSelect" class="pulp-year-select"></select>
+      <span class="pulp-filter-label" style="margin-left:12px">Ranking year (FAOSTAT, annual)</span>
+      <span id="pulpYearSelect" class="pulp-year-value">—</span>
     </div>
 
     <div class="kpis">
@@ -1159,7 +1191,7 @@ div.hdr-mark { background: var(--accent); }
 
     <div class="pulp-section">
       <div class="pulp-section-title">Production, Trade &amp; Industry Structure</div>
-      <div class="pulp-section-sub">World totals, 1961–{{ generated[:4] }} where reported. Source: FAO FAOSTAT (Forestry Production and Trade).</div>
+      <div class="pulp-section-sub" id="pulp-charts-sub">World totals, 1961–present where reported. Source: FAO FAOSTAT (Forestry Production and Trade).</div>
     </div>
     <div id="pulpCharts"><!-- built by JS --></div>
 
@@ -1214,8 +1246,8 @@ div.hdr-mark { background: var(--accent); }
       <span class="f-tag" data-mining-cat="bauxite"><span class="f-dot" style="background:#92400e"></span><span>Bauxite</span></span>
       <span class="f-tag" data-mining-cat="aluminium"><span class="f-dot" style="background:#0284c7"></span><span>Aluminium</span></span>
       <span class="f-tag" data-mining-cat="manganese"><span class="f-dot" style="background:#65a30d"></span><span>Manganese</span></span>
-      <span class="mining-filter-label" style="margin-left:12px">Ranking year</span>
-      <select id="miningYearSelect" class="mining-year-select"></select>
+      <span class="mining-filter-label" style="margin-left:12px">Ranking year (BGS, annual)</span>
+      <span id="miningYearSelect" class="mining-year-value">—</span>
     </div>
 
     <div class="kpis">
@@ -1235,7 +1267,7 @@ div.hdr-mark { background: var(--accent); }
 
     <div class="mining-section">
       <div class="mining-section-title">Production by Commodity</div>
-      <div class="mining-section-sub">World totals, 1970–{{ generated[:4] }} where reported, plus production concentration across the headline commodities. Source: British Geological Survey (World Mineral Statistics).</div>
+      <div class="mining-section-sub" id="mining-charts-sub">World totals, 1970–present where reported, plus production concentration across the headline commodities. Source: British Geological Survey (World Mineral Statistics).</div>
     </div>
     <div id="miningCharts"><!-- built by JS --></div>
 
@@ -1258,6 +1290,13 @@ div.hdr-mark { background: var(--accent); }
       </div>
     </div>
 
+    <div class="mining-tables" style="grid-template-columns:1fr;max-width:420px">
+      <div class="mining-table-card">
+        <div class="mining-table-title"><span>Top Iron-Ore-Exporting States (Current, MDIC)</span><button class="chart-icon-btn" onclick="miningComexTableCSV()" title="Download CSV">{{ ICON_CSV }}</button></div>
+        <div class="data-table-wrap"><table class="data-table" id="miningComexTable"></table></div>
+      </div>
+    </div>
+
     <div class="mining-news-card">
       <div class="mining-news-hdr">
         <span class="mining-news-hdr-title">Recent Mining &amp; Steel Sector News</span>
@@ -1270,6 +1309,73 @@ div.hdr-mark { background: var(--accent); }
       </div>
       {% else %}
       <div class="mining-empty">No recent Mining &amp; Steel sector headlines in the current News window.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div id="econAgricultureView" style="display:none">
+    <div class="agri-filters">
+      <span class="agri-filter-label">Crop</span>
+      <span class="f-tag active" data-agri-crop="2713"><span class="f-dot" style="background:#65a30d"></span><span>Soybean</span></span>
+      <span class="f-tag" data-agri-crop="2711"><span class="f-dot" style="background:#eab308"></span><span>Corn</span></span>
+      <span class="f-tag" data-agri-crop="2696"><span class="f-dot" style="background:#16a34a"></span><span>Sugarcane</span></span>
+      <span class="f-tag" data-agri-crop="2723"><span class="f-dot" style="background:#7c3aed"></span><span>Coffee</span></span>
+      <span class="f-tag" data-agri-crop="2689"><span class="f-dot" style="background:#f8fafc;border:1px solid #cbd5e1"></span><span>Cotton</span></span>
+      <span class="f-tag" data-agri-crop="2692"><span class="f-dot" style="background:#0891b2"></span><span>Rice</span></span>
+      <span class="f-tag" data-agri-crop="2716"><span class="f-dot" style="background:#d97706"></span><span>Wheat</span></span>
+      <span class="f-tag" data-agri-crop="2708"><span class="f-dot" style="background:#92400e"></span><span>Cassava</span></span>
+      <span class="agri-filter-label" style="margin-left:12px">Ranking year (IBGE crop data, annual)</span>
+      <span id="agriYearSelect" class="agri-year-value">—</span>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-label">Production<span id="agri-kpi-crop"></span></div><div class="kpi-value" id="agri-kpi-prod">—</div><div class="kpi-sub" id="agri-kpi-prod-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Top Producing State</div><div class="kpi-value" id="agri-kpi-top" style="font-size:16px;letter-spacing:-.3px">—</div><div class="kpi-sub" id="agri-kpi-top-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Rural Credit Balance</div><div class="kpi-value" id="agri-kpi-credit">—</div><div class="kpi-sub" id="agri-kpi-credit-sub">Agropecuária, BCB SGS</div></div>
+      <div class="kpi"><div class="kpi-label">Rural Insurance Subsidy</div><div class="kpi-value" id="agri-kpi-insurance">—</div><div class="kpi-sub" id="agri-kpi-insurance-sub">Federal PSR subsidy, national</div></div>
+    </div>
+
+    <div class="agri-section">
+      <div class="agri-section-title">Public Company Performance</div>
+      <div class="agri-section-sub">Live daily share prices — CONAB/IBGE data is monthly-at-best (much of it annual), so this is the recency complement: the market's real-time read on the sector, updated every refresh instead of once a year.</div>
+    </div>
+    <div class="mkt-group">
+      <div class="mkt-grid mkt-grid-wrap" id="agricultureCompanies" style="grid-template-columns:repeat(auto-fill, minmax(200px, 1fr))"><!-- built by JS --></div>
+    </div>
+
+    <div class="agri-section">
+      <div class="agri-section-title">Crops, Livestock, Trade &amp; Sector Economics</div>
+      <div class="agri-section-sub" id="agri-charts-sub">National totals — see each card's own source line for exact recency.</div>
+    </div>
+    <div id="agricultureCharts"><!-- built by JS --></div>
+
+    <div class="agri-section">
+      <div class="agri-section-title">State Rankings</div>
+      <div class="agri-section-sub">Left: ranked by the crop and year selected above, share of that year's national total. Right: registered CONAB warehouse storage capacity by state (current snapshot, not a time series).</div>
+    </div>
+    <div class="agri-tables">
+      <div class="agri-table-card">
+        <div class="agri-table-title"><span>Top Producing States</span><button class="chart-icon-btn" onclick="agriCropTableCSV()" title="Download CSV">{{ ICON_CSV }}</button></div>
+        <div class="data-table-wrap"><table class="data-table" id="agriTableProducers"></table></div>
+      </div>
+      <div class="agri-table-card">
+        <div class="agri-table-title"><span>Top Storage Capacity</span><button class="chart-icon-btn" onclick="agriStorageTableCSV()" title="Download CSV">{{ ICON_CSV }}</button></div>
+        <div class="data-table-wrap"><table class="data-table" id="agriTableStorage"></table></div>
+      </div>
+    </div>
+
+    <div class="agri-news-card">
+      <div class="agri-news-hdr">
+        <span class="agri-news-hdr-title">Recent Agriculture Sector News</span>
+        <a href="#" onclick="agriGoToSectorNews(); return false;">See all in News →</a>
+      </div>
+      {% for a in agriculture_news %}
+      <div class="agri-news-row">
+        <a href="{{ a.link }}" target="_blank" rel="noopener">{{ a.title }}</a>
+        <span class="agri-news-meta">{{ a.source }} · {{ a.published_short }}</span>
+      </div>
+      {% else %}
+      <div class="agri-empty">No recent Agriculture sector headlines in the current News window.</div>
       {% endfor %}
     </div>
   </div>
@@ -1309,6 +1415,7 @@ div.hdr-mark { background: var(--accent); }
     {% endfor %}
     {% endfor %}
   </div>
+  <div class="no-results" id="calendarNoRes" style="display:none"><div class="no-results-title">No events found</div><div>Try a different country filter.</div></div>
 </div><!-- /calendarPage -->
 
 
@@ -1317,11 +1424,12 @@ div.hdr-mark { background: var(--accent); }
 ══════════════════════════════════════════════ -->
 <div id="datasetsPage" class="page">
   <div class="catalog-bar">
-    <input  type="text" id="catSearch"   class="catalog-search" placeholder="Search datasets…" autocomplete="off">
+    <input  type="text" id="catSearch"   class="catalog-search" placeholder="Search datasets…" aria-label="Search datasets" autocomplete="off">
     <select              id="catCategory" class="catalog-cat"><option value="">All categories</option></select>
     <span id="catCount" class="catalog-count"></span>
   </div>
   <div class="catalog-grid" id="catGrid"><!-- built by JS --></div>
+  <div class="no-results" id="catNoRes" style="display:none"><div class="no-results-title">No datasets found</div><div>Try a different search term or category.</div></div>
 </div><!-- /datasetsPage -->
 
 <!-- Shared chart expand modal — used by every chart on every page -->
@@ -1358,6 +1466,9 @@ const PULP_PAPER_DATA = {{ pulp_paper_json }};
 const PULP_COMPANIES_DATA = {{ pulp_companies_json }};
 const MINING_DATA = {{ mining_json }};
 const MINING_COMPANIES_DATA = {{ mining_companies_json }};
+const AGRICULTURE_DATA = {{ agriculture_json }};
+const AGRICULTURE_COMPANIES_DATA = {{ agriculture_companies_json }};
+const COMEX_DATA = {{ comex_json }};
 
 // ── Page switching ────────────────────────────────────────────────────────
 // Five content-type pages now (Cockpit / News / Economic Data / Calendar /
@@ -1374,7 +1485,7 @@ const MINING_COMPANIES_DATA = {{ mining_companies_json }};
 const FOOTER_ATTRIBUTION = {
   cockpit:  'Market data via Yahoo Finance, FRED &amp; ANBIMA',
   news:     'News via Google News &amp; GDELT',
-  econ:     'Charts via BCB, chinadata.live, ANP, FAOSTAT &amp; BGS',
+  econ:     'Charts via BCB, chinadata.live, ANP, FAOSTAT, BGS, CONAB, IBGE &amp; MAPA',
   calendar: 'Events via BCB, IBGE &amp; Yahoo Finance',
   datasets: 'Charts via <a href="https://chinadata.live" target="_blank">chinadata.live</a>',
 };
@@ -2737,6 +2848,8 @@ const ECON_SUBVIEWS = {
               init: () => buildPulpPaper() },
   mining:   { view: 'econMiningView',   btn: 'econSubBtnMining',
               init: () => buildMining() },
+  agriculture: { view: 'econAgricultureView', btn: 'econSubBtnAgriculture',
+              init: () => buildAgriculture() },
 };
 window.econSubnavShow = function (which) {
   Object.entries(ECON_SUBVIEWS).forEach(([key, v]) => {
@@ -2778,6 +2891,28 @@ function _pulpPoints(dict) {
   return Object.keys(dict).sort().map(y => ({ x: y, y: dict[y] })).filter(p => p.y != null);
 }
 
+// IBGE's PIM-PF gives monthly keys as "YYYYMM" — reformatted to "YYYY-MM"
+// for readable axis labels. Used by both Pulp & Paper's and Mining's
+// Brazil-index chart (the current-month complement to FAOSTAT/BGS's
+// annual, 2024-capped world data — see the scrapers' own docstrings).
+function _pimpfPoints(dict) {
+  if (!dict) return [];
+  return Object.keys(dict).sort().map(k => ({ x: k.slice(0, 4) + '-' + k.slice(4), y: dict[k] })).filter(p => p.y != null);
+}
+
+// MDIC Comex Stat (scrapers/comex_scraper.py): real monthly Brazil export/
+// import volumes for Mining/Pulp & Paper/Agriculture's headline products —
+// current through whatever month MDIC has last published, unlike BGS/
+// FAOSTAT/IBGE's annual, 2024-capped world data. `section` is one of
+// COMEX_DATA.mining / .pulp_paper / .agriculture.exports / .agriculture.
+// fertilizer_imports; `monthly[prefix]["YYYY-MM"]` already has {kg,
+// fob_usd} pre-aggregated server-side, so this just flattens one metric
+// into the {x,y} shape _pulpRenderChart() already expects.
+function _comexMonthlyPoints(section, prefix, metric) {
+  const m = ((section || {}).monthly || {})[prefix] || {};
+  return Object.keys(m).sort().map(k => ({ x: k, y: (m[k] || {})[metric] })).filter(p => p.y != null);
+}
+
 // Every chart's series follow the same {name,color,points:[{x,y}]} shape
 // _pptxChartInfo() already expects for cockpit/econ charts (see below) — so
 // the same array built here for Plotly rendering is also what PPTX export
@@ -2793,7 +2928,25 @@ function _pulpBuildSpecs() {
   const mixPulpYears  = Object.keys(mix.pulp_by_type  || {}).sort();
   const mixPaperYears = Object.keys(mix.paper_by_type || {}).sort();
 
-  return [
+  const bIdx = PULP_PAPER_DATA.brazil_index || {};
+  const specs = [];
+  if (bIdx.data && Object.keys(bIdx.data).length) {
+    specs.push({ id: 'pp-brazil-index', title: 'Brazil Pulp & Paper Production Index (Monthly)', sector: 'Current Month — Brazil', chartType: 'line',
+      unit: bIdx.unit || 'Index, 2022=100', source: (bIdx.source || 'IBGE PIM-PF') + ' — Brazil only, an index not world tonnage; the current-month complement to FAOSTAT\'s annual data below',
+      series: [{ name: bIdx.label || 'Brazil index', color: '#0ea5e9', points: _pimpfPoints(bIdx.data) }] });
+  }
+
+  const comexPulp = COMEX_DATA.pulp_paper || {};
+  const comexPulpItems = comexPulp.items || {};
+  Object.keys(comexPulpItems).forEach(prefix => {
+    const points = _comexMonthlyPoints(comexPulp, prefix, 'kg');
+    if (!points.length) return;
+    specs.push({ id: `pp-comex-${prefix}`, title: `Brazil ${comexPulpItems[prefix]} Exports (Monthly)`, sector: 'Current Month — Brazil', chartType: 'line',
+      unit: 'kg (net weight)', source: 'MDIC (Comex Stat) — Brazil official export statistics, monthly',
+      series: [{ name: comexPulpItems[prefix], color: '#16a34a', points }] });
+  });
+
+  return specs.concat([
     { id: 'pp-pulp-prod', title: 'World Pulp Production', sector: 'Pulp', chartType: 'line', unit: 'tonnes', source: SRC,
       series: [{ name: 'Production', color: '#2563eb', points: _pulpPoints(W.pulp?.production) }] },
     { id: 'pp-paper-prod', title: 'World Paper & Paperboard Production', sector: 'Paper & Paperboard', chartType: 'line', unit: 'tonnes', source: SRC,
@@ -2823,7 +2976,7 @@ function _pulpBuildSpecs() {
         { name: 'Household & sanitary', color: '#d97706', points: mixPaperYears.map(y => ({ x: y, y: mix.paper_by_type[y].household_sanitary })) },
         { name: 'Other', color: '#94a3b8', points: mixPaperYears.map(y => ({ x: y, y: mix.paper_by_type[y].other })) },
       ] },
-  ];
+  ]);
 }
 
 function _pulpRenderChart(spec) {
@@ -2936,13 +3089,15 @@ function _rankRows(dataset, cat, year, element) {
   return rows.slice(0, 10);
 }
 
-function _renderRankTable(tableId, rows, unitLabel) {
+function _renderRankTable(tableId, rows, unitLabel, entityLabel, totalLabel) {
+  entityLabel = entityLabel || 'Country';
+  totalLabel = totalLabel || 'World Share';
   const table = document.getElementById(tableId);
   if (!rows.length) {
     table.innerHTML = '<tbody><tr><td style="text-align:center;color:var(--text-muted);padding:16px;">No data for this selection</td></tr></tbody>';
     return;
   }
-  const thead = `<thead><tr><th>#</th><th>Country</th><th>${unitLabel}</th><th>World Share</th></tr></thead>`;
+  const thead = `<thead><tr><th>#</th><th>${entityLabel}</th><th>${unitLabel}</th><th>${totalLabel}</th></tr></thead>`;
   const tbody = rows.map((r, i) => `<tr><td>${i + 1}</td><td>${r.country}</td><td>${_pulpFmtT(r.value)}</td><td>${r.share != null ? r.share.toFixed(1) + '%' : '—'}</td></tr>`).join('');
   table.innerHTML = thead + '<tbody>' + tbody + '</tbody>';
 }
@@ -2957,8 +3112,10 @@ function _buildRankTables(dataset, cat, year, tableIds) {
   return { producers, exporters, importers };
 }
 
-function _rankTableToCSV(rows, label, filename) {
-  const csv = [`Rank,Country,${label} (t),World Share (%)`]
+function _rankTableToCSV(rows, label, filename, entityLabel, totalLabel) {
+  entityLabel = entityLabel || 'Country';
+  totalLabel = totalLabel || 'World Share (%)';
+  const csv = [`Rank,${entityLabel},${label},${totalLabel}`]
     .concat(rows.map((r, i) => `${i + 1},"${r.country}",${r.value},${r.share != null ? r.share.toFixed(2) : ''}`))
     .join('\n');
   const a = document.createElement('a');
@@ -2977,8 +3134,8 @@ function buildPulpTables(cat, year) {
 
 window.pulpTableCSV = function (which) {
   const rows = (window._pulpTableData || {})[which] || [];
-  const label = { producers: 'Production', exporters: 'Exports', importers: 'Imports' }[which] || 'Value';
-  _rankTableToCSV(rows, label, `pulp-paper-${which}-${document.getElementById('pulpYearSelect').value}.csv`);
+  const label = { producers: 'Production (t)', exporters: 'Exports (t)', importers: 'Imports (t)' }[which] || 'Value';
+  _rankTableToCSV(rows, label, `pulp-paper-${which}-${document.getElementById('pulpYearSelect').textContent}.csv`);
 };
 
 function updatePulpKPIs(cat) {
@@ -3028,17 +3185,15 @@ function buildPulpPaper() {
     document.getElementById('pulpCharts').innerHTML = '<div class="pulp-empty">Pulp &amp; Paper data not available yet — this dataset refreshes on the next scheduled update.</div>';
     return;
   }
-  const yearSel = document.getElementById('pulpYearSelect');
-  years.slice().reverse().forEach(y => {
-    const o = document.createElement('option'); o.value = y; o.textContent = y;
-    yearSel.appendChild(o);
-  });
-  yearSel.value = years[years.length - 1];
+  const latest = years[years.length - 1];
+  document.getElementById('pulpYearSelect').textContent = latest;
+  document.getElementById('pulp-charts-sub').textContent =
+    `World totals, 1961–${latest} where reported. FAOSTAT's annual pulp & paper statistics run 12-18 months behind, so ${latest} is currently the newest year published — the Public Company Performance panel above is this page's live, current-day layer. Source: FAO FAOSTAT (Forestry Production and Trade).`;
 
   let currentCat = 'pulp';
   buildPulpCharts();
   updatePulpKPIs(currentCat);
-  buildPulpTables(currentCat, yearSel.value);
+  buildPulpTables(currentCat, latest);
 
   const pills = document.querySelectorAll('#econPulpView [data-pulp-cat]');
   pills.forEach(p => p.addEventListener('click', () => {
@@ -3046,9 +3201,8 @@ function buildPulpPaper() {
     p.classList.add('active');
     currentCat = p.dataset.pulpCat;
     updatePulpKPIs(currentCat);
-    buildPulpTables(currentCat, yearSel.value);
+    buildPulpTables(currentCat, latest);
   }));
-  yearSel.addEventListener('change', () => buildPulpTables(currentCat, yearSel.value));
 }
 
 // ── Economic Data / Mining sub-page ──────────────────────────────────────────
@@ -3082,11 +3236,34 @@ function _miningBuildSpecs() {
   const conc = MINING_DATA.concentration || {};
   const SRC = 'British Geological Survey (World Mineral Statistics)';
 
-  const specs = Object.keys(MINING_CATEGORY_COLORS).filter(k => items[k]).map(key => ({
+  const specs = [];
+  const bIdx = MINING_DATA.brazil_index || {};
+  if (bIdx.data && Object.keys(bIdx.data).length) {
+    specs.push({ id: 'mn-brazil-index', title: 'Brazil Extractive-Industries Production Index (Monthly)', sector: 'Current Month — Brazil', chartType: 'line',
+      unit: bIdx.unit || 'Index, 2022=100', source: (bIdx.source || 'IBGE PIM-PF') + ' — Brazil only, an index not world tonnage; the current-month complement to BGS\'s annual data below',
+      series: [{ name: bIdx.label || 'Brazil index', color: '#0ea5e9', points: _pimpfPoints(bIdx.data) }] });
+  }
+  specs.push(...Object.keys(MINING_CATEGORY_COLORS).filter(k => items[k]).map(key => ({
     id: `mn-${key}`, title: items[key].label, sector: items[key].label, chartType: 'line',
     unit: items[key].unit || '', source: SRC,
     series: [{ name: 'Production', color: MINING_CATEGORY_COLORS[key], points: _pulpPoints((W[key] || {}).production) }],
-  }));
+  })));
+
+  // Real Brazil export volumes (MDIC Comex Stat) for the mining products
+  // this dashboard also tracks in the BGS world data above — genuinely
+  // current (through whatever month MDIC last published), not a BGS
+  // substitute. Same 'Current Month — Brazil' sector tag as the PIM-PF
+  // index above, so both current-data cards group together in the grid.
+  const comexMining = COMEX_DATA.mining || {};
+  const comexItems = comexMining.items || {};
+  const COMEX_MINING_COLORS = { '2601': '#64748b', '2603': '#ea580c', '7601': '#0284c7', '7403': '#f97316', '2607': '#7c3aed' };
+  Object.keys(comexItems).forEach(prefix => {
+    const points = _comexMonthlyPoints(comexMining, prefix, 'kg');
+    if (!points.length) return;
+    specs.push({ id: `mn-comex-${prefix}`, title: `Brazil ${comexItems[prefix]} Exports (Monthly)`, sector: 'Current Month — Brazil', chartType: 'line',
+      unit: 'kg (net weight)', source: 'MDIC (Comex Stat) — Brazil official export statistics, monthly',
+      series: [{ name: comexItems[prefix], color: COMEX_MINING_COLORS[prefix] || '#0ea5e9', points }] });
+  });
 
   const HEADLINE = ['iron_ore', 'copper', 'gold', 'nickel', 'bauxite'];
   const concSeries = HEADLINE.filter(k => conc[k] && Object.keys(conc[k]).length).map(k => ({
@@ -3156,8 +3333,8 @@ function buildMiningTables(cat, year) {
 
 window.miningTableCSV = function (which) {
   const rows = (window._miningTableData || {})[which] || [];
-  const label = { producers: 'Production', exporters: 'Exports', importers: 'Imports' }[which] || 'Value';
-  _rankTableToCSV(rows, label, `mining-${which}-${document.getElementById('miningYearSelect').value}.csv`);
+  const label = { producers: 'Production (t)', exporters: 'Exports (t)', importers: 'Imports (t)' }[which] || 'Value';
+  _rankTableToCSV(rows, label, `mining-${which}-${document.getElementById('miningYearSelect').textContent}.csv`);
 };
 
 function updateMiningKPIs(cat) {
@@ -3223,24 +3400,46 @@ window.miningGoToSectorNews = function () {
   if (sel) { sel.value = 'Mining & Steel'; sel.dispatchEvent(new Event('change')); }
 };
 
+// Top iron-ore-exporting states, real current data (MDIC Comex Stat) —
+// reuses _rankRows()/_renderRankTable() exactly like Agriculture's crop-
+// state table, just with a fixed product (iron ore) and the comex
+// section's own latest year instead of a pill-driven category.
+window._miningComexRows = [];
+
+function buildMiningComexTable() {
+  const sec = COMEX_DATA.mining || {};
+  const years = Object.keys((sec.world || {})['2601'] || {}).length
+    ? Object.keys(sec.world['2601'].kg || {}).sort() : [];
+  if (!years.length) {
+    document.getElementById('miningComexTable').innerHTML = '<tbody><tr><td style="text-align:center;color:var(--text-muted);padding:16px;">No data available</td></tr></tbody>';
+    return;
+  }
+  const latest = years[years.length - 1];
+  window._miningComexRows = _rankRows(sec, '2601', latest, 'kg');
+  _renderRankTable('miningComexTable', window._miningComexRows, 'Exports (kg)', 'State', 'Brazil Share');
+}
+
+window.miningComexTableCSV = function () {
+  _rankTableToCSV(window._miningComexRows, 'Exports (kg)', 'mining-iron-ore-exports-by-state.csv', 'State', 'Brazil Share (%)');
+};
+
 function buildMining() {
   buildMiningCompanies(); // independent of BGS data — build regardless
+  buildMiningComexTable(); // independent of BGS data — build regardless
   const years = MINING_DATA.years || [];
   if (!years.length) {
     document.getElementById('miningCharts').innerHTML = '<div class="mining-empty">Mining data not available yet — this dataset refreshes on the next scheduled update.</div>';
     return;
   }
-  const yearSel = document.getElementById('miningYearSelect');
-  years.slice().reverse().forEach(y => {
-    const o = document.createElement('option'); o.value = y; o.textContent = y;
-    yearSel.appendChild(o);
-  });
-  yearSel.value = years[years.length - 1];
+  const latest = years[years.length - 1];
+  document.getElementById('miningYearSelect').textContent = latest;
+  document.getElementById('mining-charts-sub').textContent =
+    `World totals, 1970–${latest} where reported, plus production concentration across the headline commodities. BGS's annual World Mineral Statistics run well behind real time, so ${latest} is currently the newest year published — the Public Company Performance panel above is this page's live, current-day layer. Source: British Geological Survey (World Mineral Statistics).`;
 
   let currentCat = 'iron_ore';
   buildMiningCharts();
   updateMiningKPIs(currentCat);
-  buildMiningTables(currentCat, yearSel.value);
+  buildMiningTables(currentCat, latest);
 
   const pills = document.querySelectorAll('#econMiningView [data-mining-cat]');
   pills.forEach(p => p.addEventListener('click', () => {
@@ -3248,21 +3447,428 @@ function buildMining() {
     p.classList.add('active');
     currentCat = p.dataset.miningCat;
     updateMiningKPIs(currentCat);
-    buildMiningTables(currentCat, yearSel.value);
+    buildMiningTables(currentCat, latest);
   }));
-  yearSel.addEventListener('change', () => buildMiningTables(currentCat, yearSel.value));
 }
 
-// ── Calendar country filter (All / Brazil / China) ──────────────────────────
-(function () {
-  const pills = document.querySelectorAll('#calendarPage [data-cal-country]');
+// ── Economic Data / Agriculture sub-page ─────────────────────────────────────
+// Fourth industry-vertical page. Unlike Energy/Pulp & Paper/Mining, no single
+// bulk source covers Brazilian agriculture end-to-end, so scrapers/
+// agriculture_scraper.py itself is several sub-fetches (CONAB flat files +
+// IBGE SIDRA + MAPA SISSER + BCB SGS) merged into one agriculture_cache.json
+// — see that file's docstring for source-by-source reasoning. Reuses
+// _pulpPoints()/_pulpRenderChart() (generic) and the shared _rankRows()/
+// _renderRankTable() ranking-table helpers (with the entityLabel/totalLabel
+// params added above specifically for this page's state-level, not
+// country-level, rankings). Unlike Pulp & Paper/Mining's single "world +
+// countries" trade dataset, Agriculture's data spans several shapes (crops,
+// livestock, trade balance, prices, logistics, storage, credit, insurance),
+// so the chart grid is built from several small spec-builders instead of one,
+// and the crop pill only drives the KPIs + producing-states table (storage
+// is a snapshot with no year dimension, so it gets its own static table).
+const AGRI_CROP_COLORS = {
+  '2713': '#65a30d', '2711': '#eab308', '2696': '#16a34a', '2723': '#7c3aed',
+  '2689': '#94a3b8', '2692': '#0891b2', '2716': '#d97706', '2708': '#92400e',
+};
+const AGRI_LIVESTOCK_COLORS = { '2670': '#b45309', '32796': '#ca8a04', '32794': '#db2777' };
+const AGRI_TRADE_PRODUCTS = ['4744', '4742', '11182']; // SOJA, MILHO, ALGODAO EM PLUMA — 3 of CONAB's 6 grain-balance products, kept to a representative set
+
+function _agriFmtBRL(v) {
+  if (v == null) return '—';
+  const abs = Math.abs(v);
+  if (abs >= 1e9) return 'R$ ' + (v / 1e9).toFixed(1) + 'B';
+  if (abs >= 1e6) return 'R$ ' + (v / 1e6).toFixed(1) + 'M';
+  if (abs >= 1e3) return 'R$ ' + (v / 1e3).toFixed(0) + 'K';
+  return 'R$ ' + Math.round(v);
+}
+
+function _agriMarketNational(product) {
+  const byUf = ((AGRICULTURE_DATA.prices || {}).market || {})[product] || {};
+  const byYear = {};
+  Object.values(byUf).forEach(series => {
+    Object.entries(series).forEach(([y, v]) => {
+      byYear[y] = byYear[y] || [];
+      byYear[y].push(v);
+    });
+  });
+  const out = {};
+  Object.entries(byYear).forEach(([y, vals]) => { out[y] = vals.reduce((a, b) => a + b, 0) / vals.length; });
+  return out;
+}
+
+function _agriInsuranceNational(metric) {
+  const byState = ((AGRICULTURE_DATA.insurance || {}).by_state) || {};
+  const byYear = {};
+  Object.values(byState).forEach(years => {
+    Object.entries(years).forEach(([y, r]) => {
+      byYear[y] = (byYear[y] || 0) + (r[metric] || 0);
+    });
+  });
+  return byYear;
+}
+
+function _agriBuildSpecs() {
+  const crops = AGRICULTURE_DATA.crops || {};
+  const livestock = AGRICULTURE_DATA.livestock || {};
+  const trade = AGRICULTURE_DATA.trade || {};
+  const specs = [];
+
+  Object.entries(AGRI_CROP_COLORS).forEach(([code, color]) => {
+    const name = (crops.items || {})[code];
+    if (!name) return;
+    specs.push({
+      id: `ag-crop-${code}`, title: `${name} — Production`, sector: 'Crops', chartType: 'line',
+      unit: crops.unit || 'tonnes', source: 'IBGE SIDRA (PAM)',
+      series: [{ name: 'Production', color, points: _pulpPoints(((crops.world || {})[code] || {}).production) }],
+    });
+  });
+
+  Object.entries(AGRI_LIVESTOCK_COLORS).forEach(([code, color]) => {
+    const name = (livestock.items || {})[code];
+    if (!name) return;
+    specs.push({
+      id: `ag-live-${code}`, title: `${name} — Herd`, sector: 'Livestock', chartType: 'line',
+      unit: livestock.unit || 'head', source: 'IBGE SIDRA (PPM)',
+      series: [{ name: 'Herd', color: color, points: _pulpPoints(((livestock.world || {})[code] || {}).herd) }],
+    });
+  });
+
+  AGRI_TRADE_PRODUCTS.forEach(code => {
+    const name = (trade.items || {})[code];
+    const w = (trade.world || {})[code];
+    if (!name || !w) return;
+    specs.push({
+      id: `ag-trade-${code}`, title: `${name} — Supply-Demand Balance`, sector: 'Trade & Stocks', chartType: 'line',
+      unit: trade.unit || '1,000 t', source: 'CONAB (Oferta e Demanda)',
+      series: [
+        { name: 'Production', color: '#16a34a', points: _pulpPoints(w.production) },
+        { name: 'Exports', color: '#2563eb', points: _pulpPoints(w.export_qty) },
+        { name: 'Imports', color: '#dc2626', points: _pulpPoints(w.import_qty) },
+      ],
+    });
+  });
+
+  // A representative sample, not every product CONAB tracks — same
+  // "meaningful representation, not exhaustive" pruning as the chart
+  // grid's crop/livestock selection above.
+  [['MILHO', '#eab308'], ['SOJA', '#65a30d'], ['LEITE', '#0ea5e9'], ['FEIJÃO PRETO', '#7c2d12']].forEach(([prod, color]) => {
+    const series = ((AGRICULTURE_DATA.prices || {}).minimum || {})[prod];
+    if (!series) return;
+    specs.push({
+      id: `ag-price-${prod}`, title: `${prod} — Minimum Guaranteed Price`, sector: 'Prices', chartType: 'line',
+      unit: 'R$ per commercial unit', source: 'CONAB (Preço Mínimo)',
+      series: [{ name: prod, color, points: _pulpPoints(series) }],
+    });
+  });
+
+  const fertilizer = _agriMarketNational('08-20-20');
+  if (Object.keys(fertilizer).length) {
+    specs.push({
+      id: 'ag-fertilizer', title: 'Fertilizer (08-20-20 NPK) — Market Price', sector: 'Prices', chartType: 'line',
+      unit: 'R$ per kg, national average of state producer-paid prices', source: 'CONAB (Preços Mensais por UF) — input-price proxy, no free ANDA-equivalent API exists',
+      series: [{ name: '08-20-20', color: '#64748b', points: _pulpPoints(fertilizer) }],
+    });
+  }
+
+  const logistics = (AGRICULTURE_DATA.logistics || {}).by_year || {};
+  const freight = {};
+  Object.entries(logistics).forEach(([y, r]) => { if (r.freight_per_tonne != null) freight[y] = r.freight_per_tonne; });
+  if (Object.keys(freight).length) {
+    specs.push({
+      id: 'ag-freight', title: 'Average Freight Rate', sector: 'Logistics', chartType: 'line',
+      unit: 'R$ per tonne', source: 'CONAB (Frete)',
+      series: [{ name: 'Freight', color: '#0f766e', points: _pulpPoints(freight) }],
+    });
+  }
+
+  const credit = (AGRICULTURE_DATA.credit || {}).data || {};
+  if (Object.keys(credit).length) {
+    specs.push({
+      id: 'ag-credit', title: 'Rural Credit Balance', sector: 'Credit', chartType: 'line',
+      unit: 'R$ million', source: 'Banco Central do Brasil (SGS 22027)',
+      series: [{ name: 'Agropecuária', color: '#2563eb', points: _pulpPoints(credit) }],
+    });
+  }
+
+  const subsidy = _agriInsuranceNational('federal_subsidy');
+  const indemn = _agriInsuranceNational('indemnization');
+  if (Object.keys(subsidy).length) {
+    specs.push({
+      id: 'ag-insurance', title: 'Rural Insurance — Federal Subsidy vs. Indemnization Paid', sector: 'Insurance', chartType: 'line',
+      unit: 'R$', source: 'MAPA (SISSER) — aggregated to state/year sums, no policy-level data',
+      series: [
+        { name: 'Federal subsidy', color: '#2563eb', points: _pulpPoints(subsidy) },
+        { name: 'Indemnization paid', color: '#dc2626', points: _pulpPoints(indemn) },
+      ],
+    });
+  }
+
+  // Real monthly export volumes (MDIC Comex Stat) for the crops this page
+  // already tracks via CONAB/IBGE, plus fertilizer import volumes — a
+  // genuinely new indicator, not covered by any existing source on this
+  // page (CONAB's own fertilizer chart above is a market *price*, not an
+  // import *volume*). Both current through whatever month MDIC last
+  // published, tagged the same 'Current Month — Brazil' sector as Mining/
+  // Pulp & Paper's own Comex additions.
+  const comexAgriExports = (COMEX_DATA.agriculture || {}).exports || {};
+  const comexExportItems = comexAgriExports.items || {};
+  const COMEX_AGRI_COLORS = { '1201': '#65a30d', '1005': '#eab308', '0901': '#7c2d12', '1701': '#0891b2' };
+  Object.keys(comexExportItems).forEach(prefix => {
+    const points = _comexMonthlyPoints(comexAgriExports, prefix, 'kg');
+    if (!points.length) return;
+    specs.push({ id: `ag-comex-exp-${prefix}`, title: `Brazil ${comexExportItems[prefix]} Exports (Monthly)`, sector: 'Current Month — Brazil', chartType: 'line',
+      unit: 'kg (net weight)', source: 'MDIC (Comex Stat) — Brazil official export statistics, monthly',
+      series: [{ name: comexExportItems[prefix], color: COMEX_AGRI_COLORS[prefix] || '#0ea5e9', points }] });
+  });
+
+  const comexFertilizer = (COMEX_DATA.agriculture || {}).fertilizer_imports || {};
+  const fertItems = comexFertilizer.items || {};
+  const fertColors = { '3102': '#2563eb', '3103': '#dc2626', '3104': '#7c3aed', '3105': '#d97706' };
+  const fertSeries = Object.keys(fertItems)
+    .map(prefix => ({ name: fertItems[prefix], color: fertColors[prefix] || '#64748b', points: _comexMonthlyPoints(comexFertilizer, prefix, 'kg') }))
+    .filter(s => s.points.length);
+  if (fertSeries.length) {
+    specs.push({ id: 'ag-comex-fertilizer', title: 'Brazil Fertilizer Imports (Monthly Volume)', sector: 'Current Month — Brazil', chartType: 'line',
+      unit: 'kg (net weight)', source: 'MDIC (Comex Stat) — Brazil imports most of its fertilizer; official import statistics, monthly',
+      series: fertSeries });
+  }
+
+  return specs;
+}
+
+function buildAgricultureCharts() {
+  const specs = _agriBuildSpecs();
+  window._agricultureCharts = specs; // looked up by id in exportChartToPPTX() -> _pptxChartInfo
+  const container = document.getElementById('agricultureCharts');
+  if (!specs.length) {
+    container.innerHTML = '<div class="agri-empty">Agriculture data not available yet — this dataset refreshes on the next scheduled update.</div>';
+    return;
+  }
+  const grid = document.createElement('div');
+  grid.className = 'chart-grid';
+  specs.forEach(spec => {
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.style.borderLeftColor = (spec.series[0] && spec.series[0].color) || 'var(--border-2)';
+    const titleEsc = spec.title.replace(/'/g, "\\'");
+    card.innerHTML = `
+      <div class="chart-card-header">
+        <div><div class="chart-title">${spec.title}</div><div class="chart-sector-tag">${spec.sector}</div><div class="chart-unit" id="unit-${spec.id}"></div></div>
+        <div class="chart-actions">
+          <button class="chart-icon-btn" onclick="chartDownloadPng('plot-${spec.id}','${titleEsc}')" title="Download PNG">${ICON_PNG_SVG}</button>
+          <button class="chart-icon-btn" onclick="agriChartCSV('${spec.id}')" title="Download CSV">${ICON_CSV_SVG}</button>
+          <button class="chart-icon-btn" onclick="exportChartToPPTX(this, {source:'agriculture', id:'${spec.id}'})" title="Export to PowerPoint">${ICON_PPTX_SVG}</button>
+          <button class="chart-icon-btn" onclick="chartExpand('plot-${spec.id}','${titleEsc}', function(){ agriChartCSV('${spec.id}'); })" title="Expand">${ICON_EXPAND_SVG}</button>
+        </div>
+      </div>
+      <div class="chart-status" id="stat-${spec.id}"><div class="spinner"></div> Loading…</div>
+      <div class="chart-plot" id="plot-${spec.id}"></div>
+      <div class="chart-footer" id="ftr-${spec.id}"></div>`;
+    grid.appendChild(card);
+  });
+  container.innerHTML = '';
+  container.appendChild(grid);
+  requestAnimationFrame(() => specs.forEach(_pulpRenderChart));
+}
+
+window.agriChartCSV = function (id) {
+  const spec = (window._agricultureCharts || []).find(s => s.id === id);
+  if (!spec) return;
+  const years = [...new Set(spec.series.flatMap(s => s.points.map(p => p.x)))].sort();
+  const header = ['Year', ...spec.series.map(s => s.name)].join(',');
+  const rows = years.map(y => [y, ...spec.series.map(s => { const p = s.points.find(pt => pt.x === y); return p ? p.y : ''; })].join(','));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([[header, ...rows].join('\n')], { type: 'text/csv' }));
+  a.download = `${id}.csv`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+};
+
+// State rankings: crop-producing states use the shared _rankRows() against
+// crops.world/crops.countries (element='production'), same function Pulp &
+// Paper/Mining use against country-level trade data — just with
+// entityLabel='State'/totalLabel='Brazil Share' since crops.countries here
+// holds Brazilian states, not countries. Storage has no year dimension (a
+// current snapshot, not a time series) so it's built directly from
+// storage.by_state rather than through _rankRows().
+window._agriCropRows = [];
+window._agriStorageRows = [];
+
+function buildAgriCropTable(cropCode, year) {
+  window._agriCropRows = _rankRows(AGRICULTURE_DATA.crops || { world: {}, countries: {} }, cropCode, year, 'production');
+  _renderRankTable('agriTableProducers', window._agriCropRows, 'Production', 'State', 'Brazil Share');
+}
+
+window.agriCropTableCSV = function () {
+  _rankTableToCSV(window._agriCropRows, 'Production (t)',
+    `agriculture-producers-${document.getElementById('agriYearSelect').textContent}.csv`, 'State', 'Brazil Share (%)');
+};
+
+function buildAgriStorageTable() {
+  const byState = (AGRICULTURE_DATA.storage || {}).by_state || {};
+  const total = (AGRICULTURE_DATA.storage || {}).national_total_t || 0;
+  const rows = Object.entries(byState)
+    .map(([state, r]) => ({ country: state, value: r.capacity_t, share: total ? r.capacity_t / total * 100 : null }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10);
+  window._agriStorageRows = rows;
+  _renderRankTable('agriTableStorage', rows, 'Capacity (t)', 'State', 'National Share');
+}
+
+window.agriStorageTableCSV = function () {
+  _rankTableToCSV(window._agriStorageRows, 'Capacity (t)', 'agriculture-storage-capacity.csv', 'State', 'National Share (%)');
+};
+
+window.downloadAgricultureCompanyCSV = function (ticker) {
+  const d = AGRICULTURE_COMPANIES_DATA.find(c => c.ticker === ticker);
+  if (d) _mktCsvDownload(d, (d.label || ticker).replace(/[\s\/\*]/g, '-') + '.csv');
+};
+
+function buildAgricultureCompanies() {
+  const container = document.getElementById('agricultureCompanies');
+  if (!AGRICULTURE_COMPANIES_DATA || !AGRICULTURE_COMPANIES_DATA.length) {
+    container.innerHTML = '<div class="agri-empty">Company data not available yet.</div>';
+    return;
+  }
+  container.innerHTML = AGRICULTURE_COMPANIES_DATA.map(d => `
+    <div class="mkt-card">
+      <div class="mkt-card-meta">
+        <div class="mkt-card-hdr">
+          <span class="mkt-card-name">${d.label}</span>
+          <div class="mkt-card-actions">
+            <button class="chart-icon-btn" onclick="downloadAgricultureCompanyCSV('${d.ticker}')" title="Download CSV">${ICON_CSV_SVG}</button>
+            <button class="chart-icon-btn" onclick="exportChartToPPTX(this, {source:'agriculture-company', ticker:'${d.ticker}'})" title="Export to PowerPoint">${ICON_PPTX_SVG}</button>
+            <button class="chart-icon-btn" onclick="chartExpand('agri-co-${d.ticker}','${d.label.replace(/'/g, "\\'")}', function(){ downloadAgricultureCompanyCSV('${d.ticker}'); })" title="Expand chart">${ICON_EXPAND_SVG}</button>
+          </div>
+        </div>
+        <div class="mkt-card-val">
+          ${d.current_fmt}
+          ${d.change_fmt ? `<span class="mkt-chg ${d.change_dir}">${d.change_fmt}</span>` : ''}
+        </div>
+        <div class="mkt-card-source">${d.ticker} · ${d.country}</div>
+      </div>
+      <div class="mkt-card-chart" id="agri-co-${d.ticker}"></div>
+    </div>`).join('');
+  AGRICULTURE_COMPANIES_DATA.forEach(d => _mktRenderSpark(document.getElementById(`agri-co-${d.ticker}`), d));
+}
+
+function updateAgricultureKPIs(cropCode) {
+  const crops = AGRICULTURE_DATA.crops || {};
+  const years = Object.keys(((crops.world || {})[cropCode] || {}).production || {}).sort();
+  const latest = years[years.length - 1], prev = years[years.length - 2];
+  const name = (crops.items || {})[cropCode] || '';
+  document.getElementById('agri-kpi-crop').textContent = name ? ' — ' + name : '';
+
+  const prod = (((crops.world || {})[cropCode] || {}).production) || {};
+  document.getElementById('agri-kpi-prod').textContent = _pulpFmtT(prod[latest]);
+  const a = prod[latest], b = prod[prev];
+  const pct = (a != null && b) ? (a - b) / b * 100 : null;
+  const subEl = document.getElementById('agri-kpi-prod-sub');
+  subEl.textContent = pct == null ? (latest || '—') : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% YoY (${latest})`;
+  subEl.className = 'kpi-sub' + (pct == null ? '' : (pct >= 0 ? ' pos' : ' neg'));
+
+  const top = window._agriCropRows && window._agriCropRows[0];
+  document.getElementById('agri-kpi-top').textContent = top ? top.country : '—';
+  document.getElementById('agri-kpi-top-sub').textContent = top ? `${top.share.toFixed(1)}% of Brazil, ${latest}` : 'No data';
+
+  const creditData = (AGRICULTURE_DATA.credit || {}).data || {};
+  const creditDates = Object.keys(creditData).sort();
+  const latestCredit = creditDates[creditDates.length - 1];
+  document.getElementById('agri-kpi-credit').textContent = latestCredit ? _agriFmtBRL(creditData[latestCredit] * 1e6) : '—';
+  document.getElementById('agri-kpi-credit-sub').textContent = latestCredit ? `Agropecuária, ${latestCredit.slice(0, 7)}` : 'Not available';
+
+  const subsidy = _agriInsuranceNational('federal_subsidy');
+  const subsidyYears = Object.keys(subsidy).sort();
+  const latestSubsidyYear = subsidyYears[subsidyYears.length - 1];
+  document.getElementById('agri-kpi-insurance').textContent = latestSubsidyYear ? _agriFmtBRL(subsidy[latestSubsidyYear]) : '—';
+  document.getElementById('agri-kpi-insurance-sub').textContent = latestSubsidyYear ? `Federal PSR subsidy, ${latestSubsidyYear}` : 'Not available';
+}
+
+window.agriGoToSectorNews = function () {
+  showPage('news');
+  const sel = document.getElementById('newsSector');
+  if (sel) { sel.value = 'Agriculture'; sel.dispatchEvent(new Event('change')); }
+};
+
+function buildAgriculture() {
+  buildAgricultureCompanies(); // independent of CONAB/IBGE data — build regardless
+  buildAgricultureCharts();
+  buildAgriStorageTable();
+
+  const crops = AGRICULTURE_DATA.crops || {};
+  const allYears = new Set();
+  Object.values(crops.world || {}).forEach(entry => Object.keys(entry.production || {}).forEach(y => allYears.add(y)));
+  const years = [...allYears].sort();
+  if (!years.length) {
+    document.getElementById('agri-kpi-prod-sub').textContent = 'Not available';
+    return;
+  }
+  const cropsLatest = years[years.length - 1];
+  document.getElementById('agriYearSelect').textContent = cropsLatest;
+  const creditDates = Object.keys((AGRICULTURE_DATA.credit || {}).data || {}).sort();
+  const latestCredit = creditDates[creditDates.length - 1];
+  document.getElementById('agri-charts-sub').textContent = latestCredit
+    ? `National totals. IBGE's crop and livestock statistics (annual census data) currently run through ${cropsLatest} — that's the newest year IBGE has published, not a limitation of this page. CONAB's trade, price, freight, and insurance data and the Central Bank's rural-credit series are materially more current, running through ${latestCredit.slice(0, 7)}. See each card's own source line for its exact recency.`
+    : `National totals — see each card's own source line for exact recency.`;
+
+  let currentCrop = '2713';
+  buildAgriCropTable(currentCrop, cropsLatest);
+  updateAgricultureKPIs(currentCrop);
+
+  const pills = document.querySelectorAll('#econAgricultureView [data-agri-crop]');
   pills.forEach(p => p.addEventListener('click', () => {
     pills.forEach(x => x.classList.remove('active'));
     p.classList.add('active');
-    const country = p.dataset.calCountry;
-    document.querySelectorAll('#calendarList .ev-row').forEach(row => {
-      row.style.display = (!country || row.dataset.calCountry === country) ? '' : 'none';
+    currentCrop = p.dataset.agriCrop;
+    buildAgriCropTable(currentCrop, cropsLatest);
+    updateAgricultureKPIs(currentCrop);
+  }));
+}
+
+// ── Calendar country filter (All / Brazil / China) ──────────────────────────
+// Found in a production-readiness audit: the previous version only toggled
+// .ev-row visibility, leaving a month header (e.g. "March 2026") visibly
+// orphaned above zero events whenever a filtered country had no events that
+// month — a real, likely-to-occur gap (not just an all-zero edge case),
+// since any given month typically has events for only one of the two
+// countries at any position in the list. Also added a "No events found"
+// state, same .no-results pattern the News page already uses, for the
+// genuine all-zero case.
+(function () {
+  const pills = document.querySelectorAll('#calendarPage [data-cal-country]');
+  const listEl = document.getElementById('calendarList');
+  const noRes  = document.getElementById('calendarNoRes');
+
+  function apply(country) {
+    const children = Array.from(listEl.children);
+    let currentHeader = null;
+    let headerHasVisibleRow = false;
+    let anyVisible = false;
+
+    function closeHeader() {
+      if (currentHeader) currentHeader.style.display = headerHasVisibleRow ? '' : 'none';
+    }
+
+    children.forEach(el => {
+      if (el.classList.contains('ev-month-header')) {
+        closeHeader();
+        currentHeader = el;
+        headerHasVisibleRow = false;
+      } else if (el.classList.contains('ev-row')) {
+        const show = !country || el.dataset.calCountry === country;
+        el.style.display = show ? '' : 'none';
+        if (show) { headerHasVisibleRow = true; anyVisible = true; }
+      }
     });
+    closeHeader();
+
+    noRes.style.display = anyVisible ? 'none' : '';
+  }
+
+  pills.forEach(p => p.addEventListener('click', () => {
+    pills.forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    apply(p.dataset.calCountry);
   }));
 })();
 
@@ -3283,6 +3889,7 @@ function buildCatalog() {
       (!q   || d.title.toLowerCase().includes(q) || (d.description||'').toLowerCase().includes(q) || (d.tags||[]).some(t => t.includes(q)))
     );
     document.getElementById('catCount').textContent = `${filtered.length} of ${CHINA_CATALOG.length} datasets`;
+    document.getElementById('catNoRes').style.display = filtered.length ? 'none' : '';
     const grid = document.getElementById('catGrid');
     grid.innerHTML = '';
     filtered.forEach(d => {
@@ -3379,6 +3986,24 @@ function _pptxChartInfo(ref) {
   }
   if (ref.source === 'mining-company') {
     const d = (MINING_COMPANIES_DATA || []).find(c => c.ticker === ref.ticker);
+    if (!d || !d.data || !d.data.length) return null;
+    return {
+      title: `${d.label} (${d.ticker})`, unit: d.unit || '', source: d.source || '',
+      series: [{ name: d.label, color: (d.color || '#1e293b').replace('#', ''),
+                 points: d.data.map(p => ({ x: p.x, y: p.y })) }],
+    };
+  }
+  if (ref.source === 'agriculture') {
+    const spec = (window._agricultureCharts || []).find(x => x.id === ref.id);
+    if (!spec) return null;
+    const series = spec.series
+      .map(s => ({ name: s.name, color: (s.color || '#1e293b').replace('#', ''), points: s.points }))
+      .filter(s => s.points.length);
+    if (!series.length) return null;
+    return { title: spec.title, unit: spec.unit || '', source: spec.source || '', series };
+  }
+  if (ref.source === 'agriculture-company') {
+    const d = (AGRICULTURE_COMPANIES_DATA || []).find(c => c.ticker === ref.ticker);
     if (!d || !d.data || !d.data.length) return null;
     return {
       title: `${d.label} (${d.ticker})`, unit: d.unit || '', source: d.source || '',
@@ -3501,6 +4126,12 @@ window.chartModalClose = function(e) {
   if (e instanceof MouseEvent && e.target !== document.getElementById('chartModal')) return;
   document.getElementById('chartModal').classList.remove('open');
 };
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && document.getElementById('chartModal').classList.contains('open')) {
+    chartModalClose();
+  }
+});
 
 // ── Shared compact-sparkline-card rendering (Cockpit's .mkt-card look) ──────
 // Lifted out of what was a Cockpit-only IIFE so the Pulp & Paper "Public

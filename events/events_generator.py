@@ -54,20 +54,29 @@ COPOM_SCHEDULE: dict[int, list[tuple[str, str]]] = {
     # Add 2027: [...] when BCB publishes next year's calendar.
 }
 
-# ── Company → Yahoo Finance / B3 ticker ──────────────────────────────────────
-# Add new companies here when expanding the portfolio.
-COMPANY_TICKERS: dict[str, str] = {
-    "Petrobras":       "PETR4.SA",
-    "Vale":            "VALE3.SA",
-    "Itaú Unibanco":   "ITUB4.SA",
-    "Banco do Brasil": "BBAS3.SA",
-    "Bradesco":        "BBDC4.SA",
-    "Embraer":         "EMBR3.SA",
-    "Suzano":          "SUZB3.SA",
-    "WEG":             "WEGE3.SA",
-    "Gerdau":          "GGBR4.SA",
-    "Ambev":           "ABEV3.SA",
-}
+# Tickers come from portfolio.xlsx's own Ticker column (see build_ticker_map()
+# below) — that column is the single source of truth for this project (also
+# read by scrapers/gdelt_scraper.py for query disambiguation, and by
+# core/generate_dashboard.py's fetch_portfolio_companies() for the Cockpit
+# stock cards). Previously this was a separate hardcoded dict duplicating the
+# same 10 companies' tickers; removed in favor of reading the one real source,
+# so a new company only needs a Ticker added in portfolio.xlsx, not here too.
+
+
+def build_ticker_map(df: pd.DataFrame) -> dict[str, str]:
+    """Company name -> full Yahoo Finance ticker, from portfolio.xlsx's
+    Ticker column. Bare B3 codes (e.g. "PETR4") get ".SA" appended; a value
+    that already contains a "." is used as-is. Blank tickers are simply
+    absent from the returned dict (blank-safe, same convention
+    gdelt_scraper.py already established for this column)."""
+    ticker_map = {}
+    for _, row in df.iterrows():
+        company = str(row.get("Company") or "").strip()
+        raw = str(row.get("Ticker") or "").strip()
+        if not company or not raw or raw.lower() == "nan":
+            continue
+        ticker_map[company] = raw if "." in raw else f"{raw}.SA"
+    return ticker_map
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -79,15 +88,11 @@ def is_upcoming(d: date, today: date) -> bool:
 
 # ── 1. Earnings via yfinance ─────────────────────────────────────────────────
 
-def fetch_earnings(companies: list[str]) -> list[dict]:
+def fetch_earnings(ticker_map: dict[str, str]) -> list[dict]:
     today  = date.today()
     events = []
 
-    for company in companies:
-        symbol = COMPANY_TICKERS.get(company)
-        if not symbol:
-            print(f"    {company}: no ticker mapped, skipping")
-            continue
+    for company, symbol in ticker_map.items():
 
         try:
             cal = yf.Ticker(symbol).calendar
@@ -227,7 +232,7 @@ def fetch_ibge() -> list[dict]:
 def main():
     df = pd.read_excel(EXCEL_FILE)
     df = df[df["Company"].astype(str).str.strip() != "Company"]
-    companies = df["Company"].astype(str).str.strip().tolist()
+    ticker_map = build_ticker_map(df)
 
     print()
     print("=" * 60)
@@ -237,7 +242,7 @@ def main():
     all_events: list[dict] = []
 
     print("\n[ Earnings — Yahoo Finance / yfinance ]")
-    all_events += fetch_earnings(companies)
+    all_events += fetch_earnings(ticker_map)
 
     print("\n[ COPOM — BCB Annual Schedule ]")
     all_events += fetch_copom()

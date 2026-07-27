@@ -32,6 +32,8 @@ STEPS = [
     ("Fuel distribution data (ANP)", [sys.executable, str(ROOT / "scrapers" / "fuel_scraper.py")]),
     ("Pulp & paper data (FAOSTAT)", [sys.executable, str(ROOT / "scrapers" / "pulp_paper_scraper.py")]),
     ("Mining data (BGS)", [sys.executable, str(ROOT / "scrapers" / "mining_scraper.py")]),
+    ("Agriculture data (CONAB/IBGE/MAPA/BCB)", [sys.executable, str(ROOT / "scrapers" / "agriculture_scraper.py")]),
+    ("Trade data (MDIC Comex Stat)", [sys.executable, str(ROOT / "scrapers" / "comex_scraper.py")]),
     ("Portfolio events",  [sys.executable, str(ROOT / "events" / "events_generator.py")]),
     ("China events",      [sys.executable, str(ROOT / "events" / "china_events_generator.py")]),
     ("Brazil events",     [sys.executable, str(ROOT / "events" / "brazil_events_generator.py")]),
