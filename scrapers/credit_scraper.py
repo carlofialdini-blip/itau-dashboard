@@ -30,7 +30,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from core.net_utils import get_with_retry, DEFAULT_HEADERS  # noqa: E402
+from core.net_utils import get_many, DEFAULT_HEADERS  # noqa: E402
 from core.scoring import importance_bucket  # noqa: E402
 from core.trusted_sources import is_trusted  # noqa: E402
 
@@ -190,16 +190,10 @@ def merge_articles(existing: list[dict], new_articles: list[dict], now: datetime
 
 
 
-def fetch_sector(sector_name: str, config: dict) -> list[dict]:
-    url      = google_news_url(config["query"])
+def fetch_sector(sector_name: str, config: dict, feed) -> list[dict]:
+    """Score/filter an already-fetched feed. Fetching moved to main() so all
+    sectors' requests can be issued concurrently."""
     keywords = extract_keywords(config["query"])
-
-    try:
-        response = get_with_retry(url, headers=HEADERS, timeout=20)
-        feed = feedparser.parse(response.content)
-    except Exception as e:
-        print(f"    ERROR: {e}")
-        return []
 
     candidates = []
     seen = set()
@@ -265,9 +259,19 @@ def main():
 
     cache = {}
 
-    for sector_name, config in CREDIT_SECTORS.items():
+    sectors = list(CREDIT_SECTORS.items())
+    print(f"  Fetching {len(sectors)} sector queries concurrently...", flush=True)
+    fetched = get_many([google_news_url(c["query"]) for _n, c in sectors],
+                       headers=HEADERS, timeout=20, retries=2)
+
+    for (sector_name, config), (_u, response, exc) in zip(sectors, fetched):
         print(f"\n  [{sector_name}]")
-        new_articles = fetch_sector(sector_name, config)
+        if exc is not None:
+            print(f"    ERROR: {exc}")
+            new_articles = []
+        else:
+            new_articles = fetch_sector(sector_name, config,
+                                        feedparser.parse(response.content))
         existing_articles = existing_cache.get(sector_name, {}).get("articles", [])
         articles = merge_articles(existing_articles, new_articles, now)
         print(f"  → {len(new_articles)} new, {len(articles)} total")
@@ -279,8 +283,6 @@ def main():
             "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "articles":     articles,
         }
-
-        time.sleep(1.5)
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(cache, f, indent=4, ensure_ascii=False)

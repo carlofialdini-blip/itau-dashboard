@@ -21,7 +21,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from core.net_utils import get_with_retry, DEFAULT_HEADERS  # noqa: E402
+from core.net_utils import get_many, DEFAULT_HEADERS, DEFAULT_WORKERS  # noqa: E402
 from core.scoring import importance_bucket  # noqa: E402
 from core.trusted_sources import is_trusted  # noqa: E402
 
@@ -150,17 +150,16 @@ def relevance_score(title: str, company: str, keywords: list[str]) -> int:
 
 # ── Fetcher ──────────────────────────────────────────────────────────────────
 
-def fetch_articles(company: str, keywords: list[str]) -> tuple[list[dict], int, int]:
+def parse_articles(company: str, keywords: list[str], feed) -> tuple[list[dict], int, int]:
     """
-    Fetch, score, and filter articles for one company.
+    Score and filter an already-fetched feed for one company.
     Returns (kept_articles, raw_count, kept_count).
+
+    Split from fetching so main() can issue every company's request
+    concurrently (net_utils.get_many) while all scoring/dedup stays
+    sequential and single-threaded — the portfolio is heading for ~150
+    companies, where one-request-at-a-time is the whole runtime.
     """
-    query = build_query(company, keywords)
-    url   = google_news_url(query)
-
-    response = get_with_retry(url, headers=HEADERS, timeout=20)
-    feed = feedparser.parse(response.content)
-
     candidates = []
     seen = set()
     now  = datetime.now(timezone.utc)
@@ -288,24 +287,40 @@ def main():
     print("Fetching Google News  (last 7 days)")
     print("=" * 60)
 
+    targets = []
     for _, row in df.iterrows():
         company = str(row["Company"]).strip()
         sector  = str(row.get("Sector", "")).strip()
-        keywords = []
-
         kw_cell = row.get("Keywords", "")
-        if not pd.isna(kw_cell) and str(kw_cell).strip():
-            keywords = [x.strip() for x in str(kw_cell).split(",") if x.strip()]
+        keywords = ([x.strip() for x in str(kw_cell).split(",") if x.strip()]
+                    if not pd.isna(kw_cell) and str(kw_cell).strip() else [])
+        targets.append((company, sector, keywords, google_news_url(build_query(company, keywords))))
 
+    done = [0]
+    def progress(i, url, response, exc):
+        done[0] += 1
+        name = targets[i][0]
+        status = f"ERROR — {exc}" if exc else f"{len(response.content)} bytes"
+        print(f"  [{done[0]}/{len(targets)}] {name}: {status}", flush=True)
+
+    print(f"  Fetching {len(targets)} company queries "
+          f"({DEFAULT_WORKERS} at a time)...", flush=True)
+    fetched = get_many([t[3] for t in targets], headers=HEADERS, timeout=20,
+                       retries=2, on_result=progress)
+
+    for (company, sector, keywords, _url), (_u, response, exc) in zip(targets, fetched):
         print(f"\n  {company}")
-        print(f"  Query: {build_query(company, keywords)}")
-
-        try:
-            new_articles, raw, kept = fetch_articles(company, keywords)
-            print(f"  {raw} fetched → {kept} new")
-        except Exception as e:
-            print(f"  ERROR: {e}")
+        if exc is not None:
+            print(f"  ERROR: {exc}")
             new_articles = []
+        else:
+            try:
+                new_articles, raw, kept = parse_articles(
+                    company, keywords, feedparser.parse(response.content))
+                print(f"  {raw} fetched → {kept} new")
+            except Exception as e:
+                print(f"  ERROR: {e}")
+                new_articles = []
 
         existing_articles = existing_cache.get(company, {}).get("articles", [])
         articles = merge_articles(existing_articles, new_articles, now)
@@ -319,8 +334,6 @@ def main():
             "article_count": len(articles),
             "articles":      articles,
         }
-
-        time.sleep(1.5)
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(news, f, indent=4, ensure_ascii=False)

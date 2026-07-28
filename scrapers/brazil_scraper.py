@@ -28,7 +28,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from core.net_utils import get_with_retry, DEFAULT_HEADERS  # noqa: E402
+from core.net_utils import get_many, DEFAULT_HEADERS  # noqa: E402
 from core.scoring import importance_bucket  # noqa: E402
 from core.trusted_sources import is_trusted  # noqa: E402
 
@@ -221,22 +221,21 @@ def fetch_sector(sector_name: str, config: dict) -> list[dict]:
     seen_titles = set()
     seen_links  = set()
 
-    for ti, term in enumerate(keywords, 1):
-        url = google_news_url(term)
-        # Per-term progress: each term is its own Google News request that can
-        # take up to `timeout` seconds, so a sector with many keywords is
-        # otherwise a long silent gap in the runner's log.
-        t0 = time.monotonic()
-        try:
-            response = get_with_retry(url, headers=HEADERS, timeout=15, retries=1)
-            feed = feedparser.parse(response.content)
-        except Exception as e:
-            print(f"      [{ti}/{len(keywords)}] {term}: ERROR after "
-                  f"{time.monotonic() - t0:.1f}s — {e}", flush=True)
-            time.sleep(0.4)
+    # This sector's terms are fetched concurrently — they are independent
+    # requests and this scraper issues ~139 of them across all sectors, which
+    # was the single biggest cost in the whole news pipeline (~3min). Parsing
+    # below stays sequential and in input order, so dedup/scoring behaviour is
+    # byte-identical to the sequential version.
+    fetched = get_many([google_news_url(t) for t in keywords],
+                       headers=HEADERS, timeout=15, retries=1)
+    ok = sum(1 for _u, r, e in fetched if e is None)
+    print(f"      {ok}/{len(keywords)} term queries returned", flush=True)
+
+    for ti, (term, (_u, response, exc)) in enumerate(zip(keywords, fetched), 1):
+        if exc is not None:
+            print(f"      [{ti}/{len(keywords)}] {term}: ERROR — {exc}", flush=True)
             continue
-        print(f"      [{ti}/{len(keywords)}] {term}: {len(feed.entries)} results "
-              f"({time.monotonic() - t0:.1f}s)", flush=True)
+        feed = feedparser.parse(response.content)
 
         for entry in feed.entries:
             title = entry.get("title", "").strip()
@@ -272,8 +271,6 @@ def fetch_sector(sector_name: str, config: dict) -> list[dict]:
                 "_score":    score,
                 "_pub_dt":   pub_dt,
             })
-
-        time.sleep(0.4)
 
     qualified = [a for a in candidates if a["_score"] >= MIN_SCORE]
 
@@ -327,8 +324,6 @@ def main():
             "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "articles":     articles,
         }
-
-        time.sleep(1.5)
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(cache, f, indent=4, ensure_ascii=False)

@@ -8,6 +8,7 @@ zero out an entire sector/dataset — retry a few times with backoff first.
 """
 
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
@@ -108,3 +109,59 @@ def get_with_retry(url, *, headers=None, timeout=30, retries=3, backoff=2.0, **k
         if attempt < retries:
             time.sleep(backoff * attempt)
     raise last_exc
+
+
+# Concurrency cap for get_many(). Deliberately modest: these fetches are
+# almost all Google News RSS, which has no published rate limit and has
+# already bitten this project once (the GDELT lockout, and Yahoo's 429).
+# 6 in flight is a large speedup over sequential without looking like a
+# burst from what is, on the deployment target, a shared corporate IP.
+DEFAULT_WORKERS = 6
+
+
+def get_many(urls, *, headers=None, timeout=30, retries=3, backoff=2.0,
+             workers=DEFAULT_WORKERS, on_result=None, **kwargs):
+    """Fetch several URLs concurrently. Returns [(url, response|None, exc|None)]
+    in the SAME ORDER as `urls`, regardless of completion order.
+
+    Order matters: callers merge/dedupe/score the results afterwards, and a
+    scraper whose article ordering changed run-to-run purely because of thread
+    scheduling would produce a needlessly noisy cache diff every refresh.
+
+    Only the network wait is parallelised. Callers keep their parsing,
+    scoring, dedup and cache-merge logic sequential and single-threaded, so
+    none of that has to become thread-safe and behaviour stays identical to
+    the sequential version -- just faster.
+
+    Each URL still goes through get_with_retry(), so the retry/backoff and
+    verify=False behaviour is unchanged. A failure is reported in the tuple
+    rather than raised, because these scrapers are all built to continue past
+    an individual query failing.
+
+    on_result(index, url, response, exc) is called as each fetch finishes,
+    for progress output. It runs on a worker thread, so keep it to printing.
+    """
+    urls = list(urls)
+    results = [None] * len(urls)
+
+    def one(i_url):
+        i, url = i_url
+        try:
+            r = get_with_retry(url, headers=headers, timeout=timeout,
+                               retries=retries, backoff=backoff, **kwargs)
+            out = (url, r, None)
+        except Exception as e:                      # noqa: BLE001 - reported, not raised
+            out = (url, None, e)
+        results[i] = out
+        if on_result:
+            try:
+                on_result(i, url, out[1], out[2])
+            except Exception:                        # noqa: BLE001 - progress must never break a fetch
+                pass
+        return out
+
+    if not urls:
+        return []
+    with ThreadPoolExecutor(max_workers=max(1, min(workers, len(urls)))) as pool:
+        list(pool.map(one, enumerate(urls)))
+    return results
