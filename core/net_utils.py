@@ -22,8 +22,9 @@ _YF_SESSION = None
 
 
 def get_yf_session():
-    """A requests.Session with verify=False, shared by every yfinance call
-    site (core/generate_dashboard.py's _ck_yf(), events/events_generator.py's
+    """A verify=False session for yfinance, built on the SAME HTTP backend
+    yfinance itself uses, shared by every yfinance call site
+    (core/generate_dashboard.py's _ck_yf(), events/events_generator.py's
     fetch_earnings()).
 
     yfinance builds its own internal HTTP client and never inherited this
@@ -35,15 +36,38 @@ def get_yf_session():
     in the certifi bundle, the exact reason verify=False exists everywhere
     else in this project -- every yfinance call fails its TLS handshake,
     which callers' own broad excepts silently convert to empty data ("Data
-    unavailable"). This is a shared, cross-cutting concern (unlike most of
-    this project's deliberately-duplicated per-file logic) because both
-    call sites must apply the identical fix, same reasoning as
-    core/trusted_sources.py.
+    unavailable").
+
+    The backend must be curl_cffi, NOT plain requests. yfinance's own
+    _http.new_session() returns curl_cffi.requests.Session(impersonate=
+    "chrome") specifically because Yahoo fingerprints the TLS handshake
+    (JA3/JA4) and HTTP/2 settings: a plain requests.Session cannot
+    replicate that and Yahoo answers it with HTTP 429
+    "Too Many Requests. Rate limited." on the very first call, regardless
+    of how little traffic was actually sent. Handing yfinance a plain
+    requests.Session to carry verify=False therefore traded the corporate-
+    proxy failure for an immediate rate-limit failure -- verified live:
+    identical yf.download("^GSPC") returned 0 rows with a requests.Session
+    and 125 rows with a curl_cffi one. Setting verify=False on a curl_cffi
+    session keeps both properties at once, which is the whole point.
+
+    The plain-requests fallback only runs if curl_cffi isn't importable
+    (yfinance depends on it, so this is unlikely); it mirrors what
+    yfinance's own fallback does -- a realistic User-Agent, and an
+    acknowledgement that Yahoo may rate-limit it. This is a shared,
+    cross-cutting concern (unlike most of this project's deliberately-
+    duplicated per-file logic) because both call sites must apply the
+    identical fix, same reasoning as core/trusted_sources.py.
     """
     global _YF_SESSION
     if _YF_SESSION is None:
-        _YF_SESSION = requests.Session()
-        _YF_SESSION.verify = False
+        try:
+            from curl_cffi import requests as curl_requests
+            _YF_SESSION = curl_requests.Session(impersonate="chrome", verify=False)
+        except ImportError:
+            _YF_SESSION = requests.Session()
+            _YF_SESSION.headers.update(DEFAULT_HEADERS)
+            _YF_SESSION.verify = False
     return _YF_SESSION
 
 
