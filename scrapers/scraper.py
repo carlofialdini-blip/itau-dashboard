@@ -175,15 +175,22 @@ def fetch_articles(company: str, keywords: list[str]) -> tuple[list[dict], int, 
     seen_links  = set()
     now = datetime.now(timezone.utc)
 
-    for query in queries:
+    for qi, query in enumerate(queries, 1):
         url = google_news_url(query)
+        # Per-query progress, not just per-company. Each of these is a separate
+        # Google News request that can take up to timeout seconds, so a company
+        # with several keywords is otherwise a long silent gap in the log.
+        t0 = time.monotonic()
         try:
             response = get_with_retry(url, headers=HEADERS, timeout=15, retries=1)
             feed = feedparser.parse(response.content)
         except Exception as e:
-            print(f"      {query}: ERROR — {e}")
+            print(f"      [{qi}/{len(queries)}] {query}: ERROR after "
+                  f"{time.monotonic() - t0:.1f}s — {e}", flush=True)
             time.sleep(0.4)
             continue
+        print(f"      [{qi}/{len(queries)}] {query}: {len(feed.entries)} results "
+              f"({time.monotonic() - t0:.1f}s)", flush=True)
 
         for entry in feed.entries:
             title = entry.get("title", "").strip()

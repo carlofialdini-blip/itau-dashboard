@@ -221,15 +221,22 @@ def fetch_sector(sector_name: str, config: dict) -> list[dict]:
     seen_titles = set()
     seen_links  = set()
 
-    for term in keywords:
+    for ti, term in enumerate(keywords, 1):
         url = google_news_url(term)
+        # Per-term progress: each term is its own Google News request that can
+        # take up to `timeout` seconds, so a sector with many keywords is
+        # otherwise a long silent gap in the runner's log.
+        t0 = time.monotonic()
         try:
             response = get_with_retry(url, headers=HEADERS, timeout=15, retries=1)
             feed = feedparser.parse(response.content)
         except Exception as e:
-            print(f"      {term}: ERROR — {e}")
+            print(f"      [{ti}/{len(keywords)}] {term}: ERROR after "
+                  f"{time.monotonic() - t0:.1f}s — {e}", flush=True)
             time.sleep(0.4)
             continue
+        print(f"      [{ti}/{len(keywords)}] {term}: {len(feed.entries)} results "
+              f"({time.monotonic() - t0:.1f}s)", flush=True)
 
         for entry in feed.entries:
             title = entry.get("title", "").strip()

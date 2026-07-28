@@ -14,8 +14,11 @@ it does not abort the whole refresh.
 Run:  python3 update_dashboard.py
 """
 
+import collections
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -31,6 +34,12 @@ ROOT = Path(__file__).resolve().parent
 # slow on an unrestricted connection. A step that exceeds this is caught and
 # reported, never allowed to abort the run.
 STEP_TIMEOUT = 900
+
+# How long a step may print nothing before the runner says it is still alive.
+# Without this, a slow step is indistinguishable from a hung one: the portfolio
+# news scraper issues ~30 Google News requests at up to 15s each, so several
+# minutes of total silence is normal — and was reported as "stuck".
+HEARTBEAT_SECONDS = 20
 
 STEPS = [
     ("Portfolio news",    [sys.executable, str(ROOT / "scrapers" / "scraper.py")]),
@@ -49,6 +58,61 @@ STEPS = [
 ]
 
 
+def run_step(cmd):
+    """Run one step, echoing its output live. Returns (returncode, tail_lines).
+
+    Deliberately Popen + a reader thread rather than subprocess.run(
+    capture_output=True): that buffers everything until the child exits and
+    then shows only a 500-char tail on failure, so a step that takes minutes
+    looked completely frozen even though the scraper underneath was printing
+    per-company progress the whole time.
+
+    `-u` matters as much as the streaming does. A child Python writing to a
+    pipe (not a TTY) block-buffers stdout, so without it the output still
+    arrives in 4-8KB bursts at the end and the live echo buys nothing.
+
+    Returncode of None means "timed out"; the caller reports it as a failed
+    step, preserving this script's continue-past-failures contract.
+    """
+    proc = subprocess.Popen(
+        [cmd[0], "-u"] + cmd[1:],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, encoding="utf-8", errors="replace", bufsize=1,
+    )
+    tail = collections.deque(maxlen=40)
+    last_output = [time.monotonic()]
+
+    def pump():
+        for line in proc.stdout:
+            line = line.rstrip()
+            last_output[0] = time.monotonic()
+            if line:
+                tail.append(line)
+                print(f"        │ {line}", flush=True)
+
+    reader = threading.Thread(target=pump, daemon=True)
+    reader.start()
+
+    started = time.monotonic()
+    while True:
+        try:
+            proc.wait(timeout=1)
+            break
+        except subprocess.TimeoutExpired:
+            pass
+        now = time.monotonic()
+        if now - started > STEP_TIMEOUT:
+            proc.kill()
+            reader.join(timeout=5)
+            return None, list(tail)
+        if now - last_output[0] > HEARTBEAT_SECONDS:
+            print(f"        │ … still working ({int(now - started)}s elapsed)", flush=True)
+            last_output[0] = now
+
+    reader.join(timeout=5)
+    return proc.returncode, list(tail)
+
+
 def run():
     print()
     print("=" * 55)
@@ -59,37 +123,44 @@ def run():
     total   = len(STEPS)
     failed  = []
 
+    run_started = time.monotonic()
+
     for i, (label, cmd) in enumerate(STEPS, 1):
-        print(f"  [{i}/{total}] {label}...")
+        print(f"  [{i}/{total}] {label}...", flush=True)
+        step_started = time.monotonic()
         # Every failure mode of a child step must land here as "this step
         # failed, keep going" — that is this script's entire contract (see the
-        # module docstring). A bare subprocess.run() breaks that contract two
-        # ways: TimeoutExpired and OSError propagate out and kill the whole
-        # refresh, taking the remaining steps (including "Building dashboard")
-        # with them. The timeout is real and reachable on a slow corporate
-        # proxy — the BGS mining scraper already takes ~4 minutes on a normal
-        # connection, and the Comex step pulls 50-100MB CSVs.
+        # module docstring). OSError (the step's script is missing/unlaunchable)
+        # and the timeout are both handled rather than allowed to propagate and
+        # kill the whole refresh, taking the remaining steps — including
+        # "Building dashboard" — with them. The timeout is real and reachable on
+        # a slow corporate proxy: the BGS mining scraper already takes ~4 minutes
+        # on a normal connection, and the Comex step pulls 50-100MB CSVs.
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True,
-                                    encoding="utf-8", errors="replace", timeout=STEP_TIMEOUT)
-        except subprocess.TimeoutExpired:
-            failed.append(label)
-            print(f"        FAILED — {label} timed out after {STEP_TIMEOUT}s "
-                  f"(continuing with the rest; this source keeps its last cached data)")
-            continue
+            code, tail = run_step(cmd)
         except OSError as e:
             failed.append(label)
             print(f"        FAILED — {label} could not start: {e} (continuing with the rest)")
             continue
-        if result.returncode != 0:
+        elapsed = int(time.monotonic() - step_started)
+        if code is None:
             failed.append(label)
-            print(f"        FAILED — {label} (continuing with the rest):")
-            tail = (result.stderr or result.stdout or "").strip()[-500:]
-            for line in tail.splitlines():
+            print(f"        FAILED — {label} timed out after {STEP_TIMEOUT}s "
+                  f"(continuing with the rest; this source keeps its last cached data)")
+            continue
+        if code != 0:
+            failed.append(label)
+            print(f"        FAILED — {label} after {elapsed}s (continuing with the rest):")
+            for line in tail[-12:]:
                 print(f"        {line}")
+        else:
+            print(f"        ✓ {label} ({elapsed}s)", flush=True)
+        print(flush=True)
 
-    print()
+    total_elapsed = int(time.monotonic() - run_started)
+    mins, secs = divmod(total_elapsed, 60)
     print("=" * 55)
+    print(f"  Total run time: {mins}m {secs}s")
     if "Building dashboard" in failed:
         print("  Update FAILED — dashboard.html was not rebuilt.")
         print("  See the error above and re-run: python3 update_dashboard.py")
