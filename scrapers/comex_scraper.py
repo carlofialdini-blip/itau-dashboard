@@ -86,7 +86,13 @@ USE_COLS = ["CO_ANO", "CO_MES", "CO_NCM", "SG_UF_NCM", "KG_LIQUIDO", "VL_FOB"]
 
 def fetch_year(flow: str, year: int, prefixes: dict) -> pd.DataFrame:
     url = CSV_URL.format(flow=flow, year=year)
-    r = get_with_retry(url, timeout=120)
+    # 300s, not 120s: these yearly CSVs are 50-100MB, and the real deployment
+    # target sits behind a proxy that buffers and content-inspects a download
+    # before forwarding any of it. requests' read timeout measures the gap
+    # between received bytes, so a proxy silently scanning 100MB trips a 120s
+    # timeout without anything actually being wrong -- confirmed on the Itaú
+    # machine (ReadTimeout on balanca.economia.gov.br at readtimeout=120).
+    r = get_with_retry(url, timeout=300)
     df = pd.read_csv(io.BytesIO(r.content), sep=";", dtype=str, usecols=USE_COLS)
     for c in df.columns:
         df[c] = df[c].astype(str).str.strip('"')
@@ -139,20 +145,37 @@ def main():
     this_year = date.today().year
     years = list(range(this_year - YEARS_BACK, this_year + 1))
 
+    # Per-year fault isolation. Each year is an independent 50-100MB download,
+    # and this ran as an all-or-nothing loop: one slow/reset year raised
+    # straight out of main() and the whole step wrote nothing, discarding the
+    # years that had already downloaded fine. Same principle as
+    # agriculture_scraper.py's _fetch_section() and update_dashboard.py's own
+    # STEPS list -- a partial year range is far more useful than no data.
+    def fetch_years(flow: str, prefixes: dict) -> pd.DataFrame:
+        frames, failed = [], []
+        for y in years:
+            print(f"  {flow}_{y}.csv...")
+            try:
+                frames.append(fetch_year(flow, y, prefixes))
+            except Exception as e:
+                failed.append(y)
+                print(f"    ! {flow}_{y} failed, continuing without it: "
+                      f"{type(e).__name__}: {str(e)[:120]}")
+        if not frames:
+            raise RuntimeError(
+                f"every {flow} year failed ({', '.join(map(str, failed))}) — "
+                f"no data to write")
+        if failed:
+            print(f"  ! {flow}: {len(frames)}/{len(years)} years fetched "
+                  f"(missing {', '.join(map(str, failed))})")
+        return pd.concat(frames, ignore_index=True)
+
     print(f"Fetching MDIC Comex Stat exports ({years[0]}-{years[-1]})...")
-    exp_frames = []
-    for y in years:
-        print(f"  EXP_{y}.csv...")
-        exp_frames.append(fetch_year("EXP", y, ALL_EXPORT_PREFIXES))
-    exp_df = pd.concat(exp_frames, ignore_index=True)
+    exp_df = fetch_years("EXP", ALL_EXPORT_PREFIXES)
     print(f"  {len(exp_df):,} rows matched")
 
     print(f"Fetching MDIC Comex Stat imports, fertilizer only ({years[0]}-{years[-1]})...")
-    imp_frames = []
-    for y in years:
-        print(f"  IMP_{y}.csv...")
-        imp_frames.append(fetch_year("IMP", y, AGRI_FERTILIZER_IMPORT_PRODUCTS))
-    imp_df = pd.concat(imp_frames, ignore_index=True)
+    imp_df = fetch_years("IMP", AGRI_FERTILIZER_IMPORT_PRODUCTS)
     print(f"  {len(imp_df):,} rows matched")
 
     mining = build_product_series(exp_df, MINING_EXPORT_PRODUCTS)

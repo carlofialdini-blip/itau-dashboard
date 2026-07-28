@@ -3437,7 +3437,10 @@ function updatePulpKPIs(cat) {
   }
   function setSub(id, pct) {
     const el = document.getElementById(id);
-    el.textContent = pct == null ? latest : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% YoY (${latest})`;
+    // `latest` is undefined when FAOSTAT data never loaded; printing it raw
+    // rendered the literal string "undefined" under the KPI.
+    el.textContent = pct == null ? (latest || 'Not available')
+                                 : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% YoY (${latest})`;
     el.className = 'kpi-sub' + (pct == null ? '' : (pct >= 0 ? ' pos' : ' neg'));
   }
 
@@ -3468,21 +3471,20 @@ window.pulpGoToSectorNews = function () {
 
 function buildPulpPaper() {
   buildPulpCompanies(); // independent of FAOSTAT data — build regardless
-  const years = PULP_PAPER_DATA.years || [];
-  if (!years.length) {
-    document.getElementById('pulpCharts').innerHTML = '<div class="pulp-empty">Pulp &amp; Paper data not available yet — this dataset refreshes on the next scheduled update.</div>';
-    return;
-  }
-  const latest = years[years.length - 1];
-  document.getElementById('pulpYearSelect').textContent = latest;
-  document.getElementById('pulp-charts-sub').textContent =
-    `World totals, 1961–${latest} where reported. FAOSTAT's annual pulp & paper statistics run 12-18 months behind, so ${latest} is currently the newest year published — the Public Company Performance panel above is this page's live, current-day layer. Source: FAO FAOSTAT (Forestry Production and Trade).`;
+  const years  = PULP_PAPER_DATA.years || [];
+  const latest = years.length ? years[years.length - 1] : null;
 
+  // Wire the category pills FIRST, unconditionally, and never behind an early
+  // return. They used to be wired at the very end of this function, after a
+  // `return` taken whenever FAOSTAT data was missing — so on a machine where
+  // that fetch had never succeeded (Itaú's proxy blocks FAOSTAT's bulk zip:
+  // it is served as application/x-zip-compressed, which that proxy rejects
+  // with MediaTypeBlockedDownload, while ANP's application/zip passes) the
+  // pills silently had no listeners at all. Clicking "Paper & Paperboard" or
+  // "Recovered Fibre" did nothing and the page looked permanently stuck on
+  // "Pulp" — reported as exactly that. Pill wiring does not depend on the
+  // data, so it must not share the data's failure path.
   let currentCat = 'pulp';
-  buildPulpCharts();
-  updatePulpKPIs(currentCat);
-  buildPulpTables(currentCat, latest);
-
   const pills = document.querySelectorAll('#econPulpView [data-pulp-cat]');
   pills.forEach(p => p.addEventListener('click', () => {
     pills.forEach(x => x.classList.remove('active'));
@@ -3491,6 +3493,20 @@ function buildPulpPaper() {
     updatePulpKPIs(currentCat);
     buildPulpTables(currentCat, latest);
   }));
+
+  if (!latest) {
+    document.getElementById('pulpCharts').innerHTML = '<div class="pulp-empty">Pulp &amp; Paper data not available yet — this dataset refreshes on the next scheduled update.</div>';
+    updatePulpKPIs(currentCat);   // honest "—"/"Not available", not stale placeholders
+    return;
+  }
+
+  document.getElementById('pulpYearSelect').textContent = latest;
+  document.getElementById('pulp-charts-sub').textContent =
+    `World totals, 1961–${latest} where reported. FAOSTAT's annual pulp & paper statistics run 12-18 months behind, so ${latest} is currently the newest year published — the Public Company Performance panel above is this page's live, current-day layer. Source: FAO FAOSTAT (Forestry Production and Trade).`;
+
+  buildPulpCharts();
+  updatePulpKPIs(currentCat);
+  buildPulpTables(currentCat, latest);
 }
 
 // ── Economic Data / Mining sub-page ──────────────────────────────────────────
@@ -3982,9 +3998,27 @@ window.agriChartCSV = function (id) {
 window._agriCropRows = [];
 window._agriStorageRows = [];
 
-function buildAgriCropTable(cropCode, year) {
-  window._agriCropRows = _rankRows(AGRICULTURE_DATA.crops || { world: {}, countries: {} }, cropCode, year, 'production');
+// Each crop's own newest year, NOT the newest year across all crops. Those
+// differ: CONAB's cane bulletin already reports the 2026/27 safra while every
+// other crop tops out at 2025 (soy/corn/rice/wheat/beans) or 2024. Ranking on
+// a single global max meant 15 of the 16 crops were queried at a year they
+// have no data for, so the producers table came back empty and the "Top
+// Producing State" KPI read "No data" for everything except Sugarcane —
+// including Soybean, which is the default selection.
+function _agriCropLatestYear(cropCode) {
+  const prod = (((AGRICULTURE_DATA.crops || {}).world || {})[cropCode] || {}).production || {};
+  const ys = Object.keys(prod).sort();
+  return ys.length ? ys[ys.length - 1] : null;
+}
+
+function buildAgriCropTable(cropCode) {
+  const year = _agriCropLatestYear(cropCode);
+  window._agriCropRows = year
+    ? _rankRows(AGRICULTURE_DATA.crops || { world: {}, countries: {} }, cropCode, year, 'production')
+    : [];
   _renderRankTable('agriTableProducers', window._agriCropRows, 'Production', 'State', 'Brazil Share');
+  const yEl = document.getElementById('agriYearSelect');
+  if (yEl) yEl.textContent = year || '—';
 }
 
 window.agriCropTableCSV = function () {
@@ -4087,30 +4121,36 @@ function buildAgriculture() {
   const allYears = new Set();
   Object.values(crops.world || {}).forEach(entry => Object.keys(entry.production || {}).forEach(y => allYears.add(y)));
   const years = [...allYears].sort();
-  if (!years.length) {
+  const cropsLatest = years.length ? years[years.length - 1] : null;
+
+  // Wire the crop pills unconditionally, before any early return — same bug
+  // class as buildPulpPaper()'s: listeners registered after a data-dependent
+  // `return` are silently never attached, leaving the filter frozen on its
+  // default with no error anywhere.
+  let currentCrop = '2713';
+  const pills = document.querySelectorAll('#econAgricultureView [data-agri-crop]');
+  pills.forEach(p => p.addEventListener('click', () => {
+    pills.forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    currentCrop = p.dataset.agriCrop;
+    buildAgriCropTable(currentCrop);
+    updateAgricultureKPIs(currentCrop);
+  }));
+
+  if (!cropsLatest) {
     document.getElementById('agri-kpi-prod-sub').textContent = 'Not available';
+    updateAgricultureKPIs(currentCrop);
     return;
   }
-  const cropsLatest = years[years.length - 1];
-  document.getElementById('agriYearSelect').textContent = cropsLatest;
+
   const creditDates = Object.keys((AGRICULTURE_DATA.credit || {}).data || {}).sort();
   const latestCredit = creditDates[creditDates.length - 1];
   document.getElementById('agri-charts-sub').textContent = latestCredit
     ? `National totals. IBGE's crop and livestock statistics (annual census data) currently run through ${cropsLatest} — that's the newest year IBGE has published, not a limitation of this page. CONAB's trade, price, freight, and insurance data and the Central Bank's rural-credit series are materially more current, running through ${latestCredit.slice(0, 7)}. See each card's own source line for its exact recency.`
     : `National totals — see each card's own source line for exact recency.`;
 
-  let currentCrop = '2713';
-  buildAgriCropTable(currentCrop, cropsLatest);
+  buildAgriCropTable(currentCrop);
   updateAgricultureKPIs(currentCrop);
-
-  const pills = document.querySelectorAll('#econAgricultureView [data-agri-crop]');
-  pills.forEach(p => p.addEventListener('click', () => {
-    pills.forEach(x => x.classList.remove('active'));
-    p.classList.add('active');
-    currentCrop = p.dataset.agriCrop;
-    buildAgriCropTable(currentCrop, cropsLatest);
-    updateAgricultureKPIs(currentCrop);
-  }));
 }
 
 // ── Calendar country filter (All / Brazil / China) ──────────────────────────

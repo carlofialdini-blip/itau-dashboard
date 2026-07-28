@@ -19,7 +19,7 @@ if hasattr(sys.stderr, "reconfigure"):
 from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
 
-from net_utils import get_with_retry, get_yf_session
+from net_utils import get_with_retry, get_yf_session, DEFAULT_HEADERS
 
 
 def _safe_json(obj) -> Markup:
@@ -660,7 +660,16 @@ def fetch_china_catalog() -> list:
 
 
 BCB_BASE = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.{series}/dados?dataInicial={start}&dataFinal={end}&formato=json"
-BCB_HDR  = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+# Inherit net_utils' full browser User-Agent rather than the bare "Mozilla/5.0"
+# this used to send. That truncated string is a classic scripted-client
+# signature and an inspecting corporate proxy can reject it outright: on the
+# Itaú network every Brazil/Credit chart came back empty ("no data", no axes)
+# while agriculture_scraper.py's build_credit() hit the *same* api.bcb.gov.br
+# host successfully in the same run -- the only material difference being that
+# it passes no headers= override and so gets DEFAULT_HEADERS. Same lesson as
+# the FRED/MAPA cases (see §10 notes): a header set is tuned for a specific
+# server, never universally safe -- here the browser UA is the one that works.
+BCB_HDR  = {**DEFAULT_HEADERS, "Accept": "application/json"}
 
 
 def load_brazil_news():
@@ -880,7 +889,7 @@ def fetch_brazil_charts() -> dict:
 
         url = BCB_BASE.format(series=series_id, start=start_str, end=today_str)
         try:
-            r = get_with_retry(url, headers=BCB_HDR, timeout=20)
+            r = get_with_retry(url, headers=BCB_HDR, timeout=30)
             raw = r.json()
             points = []
             for pt in raw:
@@ -919,7 +928,7 @@ def fetch_credit_charts() -> dict:
         series_id = ds["bcb_series"]
         url = BCB_BASE.format(series=series_id, start=start_str, end=today_str)
         try:
-            r = get_with_retry(url, headers=BCB_HDR, timeout=20)
+            r = get_with_retry(url, headers=BCB_HDR, timeout=30)
             raw    = r.json()
             points = []
             for pt in raw:

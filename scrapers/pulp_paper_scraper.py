@@ -141,7 +141,37 @@ def fetch_df() -> pd.DataFrame:
     # just pulp/paper) — ANP-scale download, materially bigger CSV, so a
     # longer timeout than the project default and chunked filtering to keep
     # memory bounded rather than loading the full un-filtered file at once.
-    r = get_with_retry(ZIP_URL, headers=HEADERS, timeout=120)
+    try:
+        r = get_with_retry(ZIP_URL, headers=HEADERS, timeout=180)
+    except Exception as e:
+        # On the Itaú network this fails with
+        #   403 Client Error: MediaTypeBlockedDownload
+        # which is the corporate proxy's download filter, not FAO refusing us.
+        # FAO serves this file as "application/x-zip-compressed" (a legacy,
+        # non-standard MIME type) while ANP's liquidos.zip -- which downloads
+        # fine on the same machine, in the same run -- is served as the
+        # standard "application/zip". So the proxy is filtering on that exact
+        # media type, not on ZIPs generally, and not on this domain.
+        #
+        # Deliberately NOT worked around in code: routing around an employer's
+        # download-scanning control is not this project's call to make. The
+        # fix is an IT allowlist entry, and the message below gives Carlo the
+        # precise wording to request one. No free non-zip source for this
+        # dataset exists -- FAOSTAT's JSON API (fenixservices) is down (521)
+        # and faostatservices requires an API key, which §6 rules out.
+        if "MediaTypeBlockedDownload" in str(e) or "403" in str(e):
+            raise RuntimeError(
+                "FAOSTAT download blocked by the network's media-type filter.\n"
+                f"  URL:  {ZIP_URL}\n"
+                "  FAO serves this as 'application/x-zip-compressed'; the proxy "
+                "allows the standard 'application/zip' (ANP's download works).\n"
+                "  Ask IT to allow media type 'application/x-zip-compressed' from "
+                "bulks-faostat.fao.org.\n"
+                "  Until then the Pulp & Paper page keeps its last successful "
+                "snapshot; every other page is unaffected.\n"
+                f"  Original error: {e}"
+            ) from e
+        raise
     with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
         with zf.open(CSV_MEMBER) as f:
             chunks = []
