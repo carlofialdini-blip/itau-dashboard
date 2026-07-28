@@ -77,6 +77,56 @@ def _logo_data_uri() -> str:
     return f"data:image/png;base64,{b64}"
 
 
+VENDOR_DIR = ROOT / "assets" / "vendor"
+VENDOR_SCRIPTS = {
+    "vendor_plotly":   "plotly-basic-2.26.0.min.js",
+    "vendor_xlsx":     "xlsx-0.20.2.full.min.js",
+    "vendor_pptxgen":  "pptxgen-3.12.0.bundle.js",
+    "vendor_chartjs":  "chart-4.4.1.umd.min.js",
+}
+
+
+def _vendor_scripts() -> dict:
+    """Read the vendored frontend libraries for inline embedding.
+
+    These are committed to the repo on purpose rather than fetched at build
+    time: the machine that runs this pipeline is the same locked-down bank
+    machine whose network blocks the CDNs, so a build-time download would
+    fail exactly where it matters most.
+
+    Embedding them (instead of <script src="https://cdn...">) is what makes
+    dashboard.html actually work there. With the CDNs blocked, Plotly never
+    loaded, and the first reference to it threw "ReferenceError: Plotly is
+    not defined" partway through the single inline <script> block -- which
+    silently left showPage(), buildMining(), buildPulpPaper() and everything
+    defined after that point undefined. Symptoms were "charts show no data"
+    and "clicking the Mining / Pulp & Paper sub-nav does nothing," with no
+    error visible to a normal user. Verified by executing the real generated
+    script in Node with the CDN globals deliberately undefined.
+
+    Plotly is the *basic* bundle (~1MB vs ~3.5MB full): this dashboard only
+    ever uses scatter and bar traces plus newPlot/downloadImage, all
+    confirmed present in that bundle before switching to it.
+
+    A missing file raises rather than silently degrading -- a dashboard
+    shipped without Plotly is not a slightly-worse dashboard, it is a broken
+    one, and that must fail loudly at build time, not quietly at view time.
+    """
+    out = {}
+    for var, filename in VENDOR_SCRIPTS.items():
+        path = VENDOR_DIR / filename
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Vendored frontend library missing: {path}\n"
+                f"dashboard.html cannot work without it (the CDNs are blocked on "
+                f"the target network). Restore it from the repo — it is tracked in git."
+            )
+        # Markup() so autoescape leaves the JS alone; these are trusted,
+        # version-pinned library files from the repo, not user-influenced data.
+        out[var] = Markup(path.read_text(encoding="utf-8"))
+    return out
+
+
 def _cover_image_data_uris() -> list:
     """Landing-page hero background images, embedded inline same as the logo.
     Pre-resized (max 1800px, JPEG q74) into assets/ from the originals in
@@ -90,6 +140,123 @@ def _cover_image_data_uris() -> list:
             b64 = base64.b64encode(f.read_bytes()).decode("ascii")
             uris.append(f"data:image/jpeg;base64,{b64}")
     return uris
+
+LIVE_CACHE_FILE = ROOT / "data" / "live_fetch_cache.json"
+
+
+def _has_data(item) -> bool:
+    """Did this fetched item actually come back with values?
+
+    Every live fetch in this file funnels failures into the same shape: an
+    item whose "data" is an empty list (_ck_make() does this explicitly when
+    a series is empty, and the BCB/chinadata loops just never populate one).
+    So "empty data" is the single reliable failure signal across all of them.
+    """
+    if isinstance(item, dict):
+        if "data" in item:
+            return bool(item["data"])
+        return bool(item)
+    return bool(item)
+
+
+def _item_key(item, idx):
+    for k in ("ticker", "id", "label"):
+        if isinstance(item, dict) and item.get(k):
+            return str(item[k])
+    return str(idx)
+
+
+def _resilient(name: str, fresh, cache: dict):
+    """Merge a live fetch with the last-known-good copy, per item.
+
+    Everything else in this project keeps working when a source has a bad
+    day -- scrapers merge into data/*_cache.json, update_dashboard.py
+    continues past failed steps, load_*_data() falls back to the previous
+    snapshot. This file's own live fetches (BCB, chinadata.live, yfinance,
+    FRED) were the one place with no such safety net: they re-fetched from
+    scratch every run and, on failure, simply rendered an empty chart. On a
+    restricted/flaky corporate network that is the difference between "one
+    stale-by-a-day series" and "an entire page of blank cards."
+
+    Merging happens per item, not all-or-nothing, because partial failure is
+    the normal case here -- e.g. Yahoo rate-limits so most tickers come back
+    empty while FRED-sourced cards succeed in the same run. Each item that
+    returned real data is kept; each that came back empty falls back to its
+    own last-good value.
+
+    Cached values are real data that was genuinely fetched, just earlier --
+    every chart already renders its own dates, so a series that stopped a
+    day or two ago shows that honestly on its own axis rather than being
+    passed off as current.
+    """
+    prev = cache.get(name)
+    if fresh is None:
+        fresh = {} if isinstance(prev, dict) else []
+
+    if isinstance(fresh, dict):
+        merged = dict(prev) if isinstance(prev, dict) else {}
+        reused = []
+        for k, v in fresh.items():
+            if _has_data(v):
+                merged[k] = v
+            elif k in merged and _has_data(merged[k]):
+                reused.append(k)
+            else:
+                merged[k] = v
+        if reused:
+            print(f"    ! {name}: reused cached data for {len(reused)} item(s): "
+                  f"{', '.join(reused[:6])}{'...' if len(reused) > 6 else ''}")
+        cache[name] = merged
+        return merged
+
+    if isinstance(fresh, list):
+        prev_by_key = {}
+        if isinstance(prev, list):
+            prev_by_key = {_item_key(it, i): it for i, it in enumerate(prev)}
+        merged, reused = [], []
+        for i, it in enumerate(fresh):
+            k = _item_key(it, i)
+            if _has_data(it) or not _has_data(prev_by_key.get(k)):
+                merged.append(it)
+            else:
+                merged.append(prev_by_key[k])
+                reused.append(k)
+        if not fresh and isinstance(prev, list) and prev:
+            merged = prev
+            reused = ["<entire list>"]
+        if reused:
+            print(f"    ! {name}: reused cached data for {len(reused)} item(s): "
+                  f"{', '.join(reused[:6])}{'...' if len(reused) > 6 else ''}")
+        cache[name] = merged
+        return merged
+
+    if not fresh and prev:
+        print(f"    ! {name}: reused cached value")
+        return prev
+    cache[name] = fresh
+    return fresh
+
+
+def _load_live_cache() -> dict:
+    if not LIVE_CACHE_FILE.exists():
+        return {}
+    try:
+        with open(LIVE_CACHE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"  (live cache unreadable, starting fresh: {e})")
+        return {}
+
+
+def _save_live_cache(cache: dict) -> None:
+    try:
+        cache["_fetched_at"] = datetime.now(timezone.utc).isoformat()
+        LIVE_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(LIVE_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(cache, f, ensure_ascii=False)
+    except Exception as e:
+        print(f"  (could not write live cache: {e})")
+
 
 # ── China datasets shown on the Economic Data tab ───────────────────────────
 # Each entry drives one chart card; data is fetched live by the browser.
@@ -839,9 +1006,17 @@ def _ck_yf(ticker, period="1y"):
     """
     try:
         import yfinance as yf
-        df = yf.download(ticker, period=period, interval="1d",
-                         auto_adjust=True, progress=False,
-                         session=get_yf_session())
+        kw = dict(period=period, interval="1d", auto_adjust=True, progress=False)
+        try:
+            df = yf.download(ticker, session=get_yf_session(), **kw)
+        except TypeError:
+            # yfinance churns its API between releases (this pipeline has been
+            # seen running 1.4.1 locally and 1.5.1 on the bank machine). If a
+            # future version stops accepting session=, fall back to a plain
+            # call rather than turning every single ticker into an exception —
+            # the TLS workaround is lost, but a working-on-some-networks fetch
+            # beats a guaranteed-broken one everywhere.
+            df = yf.download(ticker, **kw)
         if df.empty:
             return []
         col = df["Close"]
@@ -1457,12 +1632,41 @@ def render(unified_news, news_countries, news_sectors, news_companies, news_sour
         generated=datetime.now(BRASILIA_TZ).strftime("%Y-%m-%d %H:%M"),
         logo_data_uri=_logo_data_uri(),
         cover_image_uris=_cover_image_data_uris(),
+        **_vendor_scripts(),
     )
-    with open(OUTPUT_HTML, "w", encoding="utf-8") as f:
-        f.write(html)
+    # Write to a temp file then atomically replace, rather than truncating
+    # OUTPUT_HTML and streaming 12MB into it. The real deployment path is a
+    # OneDrive-synced folder on Windows ("OneDrive - Banco Itaú SA\...") with
+    # the previous dashboard.html quite possibly still open in a browser --
+    # both of which can hold a lock. Writing directly means a lock (or a sync
+    # hiccup mid-write) leaves a truncated, corrupt dashboard.html where a
+    # working one used to be; os.replace() is atomic, so the old file stays
+    # intact until the new one is complete.
+    tmp_path = OUTPUT_HTML.with_name(OUTPUT_HTML.name + ".tmp")
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            f.write(html)
+        os.replace(tmp_path, OUTPUT_HTML)
+    except PermissionError as e:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise PermissionError(
+            f"Could not write {OUTPUT_HTML}: {e}\n"
+            f"On Windows this usually means the file is locked — close it in your "
+            f"browser (and let OneDrive finish syncing) then re-run."
+        ) from e
 
 
 def main():
+    # Last-known-good values for every *live* fetch below. Loaded once here
+    # and passed to _resilient() at each fetch site, so a source that fails
+    # or rate-limits degrades to its previous real data instead of an empty
+    # chart -- the same fault tolerance the scrapers and load_*_data() have
+    # always had, which this file's own fetches were missing.
+    live_cache = _load_live_cache()
+
     print("Loading unified news feed (Portfolio + Brazil + China + Credit)...")
     unified_news, news_countries, news_sectors, news_companies, news_sources = load_unified_news()
     print(f"  {len(unified_news)} articles — {len(news_sectors)} sectors, {len(news_companies)} companies, {len(news_sources)} sources")
@@ -1472,20 +1676,21 @@ def main():
     print(f"  {len(unified_events)} events")
 
     print("Fetching China chart data...")
-    china_charts = fetch_china_charts()
+    china_charts = _resilient("china_charts", fetch_china_charts(), live_cache)
 
     print("Fetching China dataset catalog...")
-    china_catalog = fetch_china_catalog()
+    china_catalog = _resilient("china_catalog", fetch_china_catalog(), live_cache)
 
     print("Fetching Brazil macro charts (BCB)...")
-    brazil_charts = fetch_brazil_charts()
+    brazil_charts = _resilient("brazil_charts", fetch_brazil_charts(), live_cache)
 
     print("Fetching Credit market charts (BCB)...")
-    credit_charts = fetch_credit_charts()
+    credit_charts = _resilient("credit_charts", fetch_credit_charts(), live_cache)
 
     print("Fetching cockpit market data...")
     cockpit = fetch_cockpit_data()
     cockpit.update(fetch_portfolio_companies())
+    cockpit = _resilient("cockpit", cockpit, live_cache)
 
     print("Loading fuel-distribution data (ANP)...")
     fuel_data = load_fuel_data()
@@ -1499,7 +1704,7 @@ def main():
     # already has a "Pulp & Paper" sector (Suzano/Klabin/Bracell/Eldorado,
     # celulose/kraft/tissue keywords), so this is a filter, not a new fetch.
     pulp_news = [a for a in unified_news if a.get("sector") == "Pulp & Paper"][:20]
-    pulp_companies = fetch_pulp_companies()
+    pulp_companies = _resilient("pulp_companies", fetch_pulp_companies(), live_cache)
 
     print("Loading mining data (BGS)...")
     mining_data = load_mining_data()
@@ -1508,7 +1713,7 @@ def main():
     # Reuses the unified news feed already loaded above — brazil_scraper.py
     # already has a "Mining & Steel" sector, so this is a filter, not a new fetch.
     mining_news = [a for a in unified_news if a.get("sector") == "Mining & Steel"][:20]
-    mining_companies = fetch_mining_companies()
+    mining_companies = _resilient("mining_companies", fetch_mining_companies(), live_cache)
 
     print("Loading agriculture data (CONAB/IBGE/MAPA/BCB)...")
     agriculture_data = load_agriculture_data()
@@ -1517,7 +1722,7 @@ def main():
     # Reuses the unified news feed already loaded above — brazil_scraper.py
     # already has an "Agriculture" sector, so this is a filter, not a new fetch.
     agriculture_news = [a for a in unified_news if a.get("sector") == "Agriculture"][:20]
-    agriculture_companies = fetch_agriculture_companies()
+    agriculture_companies = _resilient("agriculture_companies", fetch_agriculture_companies(), live_cache)
 
     print("Loading trade data (MDIC Comex Stat)...")
     comex_data = load_comex_data()
@@ -1536,6 +1741,7 @@ def main():
            mining_data, mining_news, mining_companies,
            agriculture_data, agriculture_news, agriculture_companies,
            comex_data)
+    _save_live_cache(live_cache)
     print("\ndashboard.html generated successfully.")
 
 

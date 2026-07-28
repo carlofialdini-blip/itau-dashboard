@@ -4,13 +4,22 @@
 <meta charset="UTF-8">
 <title>Portfolio Intelligence</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.plot.ly/plotly-2.26.0.min.js" charset="utf-8"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{# Every frontend library is embedded inline from assets/vendor/, never loaded
+   from a CDN. This is not a preference -- it is the difference between the
+   dashboard working and not working on Itaú's network, which blocks
+   cdn.plot.ly / cdnjs.cloudflare.com / cdn.sheetjs.com / cdn.jsdelivr.net
+   outright. A blocked Plotly meant the *entire* inline script below threw
+   "ReferenceError: Plotly is not defined" partway through at load time,
+   leaving showPage/buildMining/buildPulpPaper and everything after them
+   undefined -- charts blank, sub-nav buttons dead. It also restores the rule
+   CLAUDE.md SS8 already stated: dashboard.html must be a single
+   self-contained file with no external asset references. Fonts likewise use
+   a pure system stack rather than Google Fonts, so there is no network call
+   of any kind at view time. #}
+<script>{{ vendor_plotly }}</script>
+<script>{{ vendor_xlsx }}</script>
+<script>{{ vendor_pptxgen }}</script>
+<script>{{ vendor_chartjs }}</script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -135,7 +144,7 @@ html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
   font-size: 13px; line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -662,7 +671,7 @@ div.hdr-mark { background: var(--accent); }
   /* --green intentionally not redeclared: --green:var(--green) here would be
      a self-referencing cycle (same bug as above) and root's --green already
      applies via inheritance. */
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
   font-size: 13px; color: var(--text);
 }
 #econEnergyView select {
@@ -763,7 +772,7 @@ div.hdr-mark { background: var(--accent); }
 #econEnergyView tbody tr:hover { background: var(--surface2); }
 #econEnergyView tbody tr:last-child { font-weight: 700; color: var(--accent); border-bottom: none; }
 #econEnergyView td { padding: 8px 12px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
-#econEnergyView td:first-child { text-align: left; font-family: 'Inter', sans-serif; font-weight: 500; }
+#econEnergyView td:first-child { text-align: left; font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif; font-weight: 500; }
 #econEnergyView .var-pos { color: var(--green); }
 #econEnergyView .var-neg { color: var(--red); }
 #econEnergyView .ano-table td { padding: 6px 12px; }
@@ -2977,7 +2986,7 @@ const ICON_PPTX_SVG    = '<svg width="12" height="12" viewBox="0 0 24 24" fill="
 // ── Plotly layout (light theme) ───────────────────────────────────────────
 const LAYOUT = {
   paper_bgcolor: '#ffffff', plot_bgcolor: '#f8fafc',
-  font: {color:'#64748b', family:'Inter, sans-serif', size:10},
+  font: {color:'#64748b', family:'Inter, Segoe UI, -apple-system, Helvetica Neue, Arial, sans-serif', size:10},
   margin: {t:10, r:10, b:48, l:60},
   xaxis: {gridcolor:'#e2e8f0', color:'#64748b', tickfont:{size:9}, nticks:8, linecolor:'#e2e8f0'},
   yaxis: {gridcolor:'#e2e8f0', color:'#64748b', tickfont:{size:9}, zeroline:false, linecolor:'#e2e8f0'},

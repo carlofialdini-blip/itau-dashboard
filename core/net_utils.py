@@ -47,7 +47,7 @@ def get_yf_session():
     return _YF_SESSION
 
 
-def get_with_retry(url, *, headers=None, timeout=15, retries=2, backoff=2.0, **kwargs):
+def get_with_retry(url, *, headers=None, timeout=30, retries=3, backoff=2.0, **kwargs):
     """GET with retries on connection/timeout errors and transient 5xx
     server errors. A 502/503/504 means the *target* server had a bad
     moment (confirmed live: BGS's ogcapi.bgs.ac.uk returned a bare 502 on
@@ -55,6 +55,14 @@ def get_with_retry(url, *, headers=None, timeout=15, retries=2, backoff=2.0, **k
     client-side problem (bad URL, not found, auth) that a retry can't
     fix, so those still fail fast on the first attempt rather than
     wasting the retry budget.
+
+    Defaults (timeout=30, retries=3) are deliberately more patient than a
+    normal script's would be: this pipeline's real deployment target is a
+    corporate network that proxies and inspects every request, which adds
+    latency on top of already-slow public endpoints, and which has produced
+    real mid-transfer connection resets (WinError 10054 from CONAB/IBGE).
+    Callers that know their endpoint is heavy still pass a larger explicit
+    timeout (the ~20MB ANP and FAOSTAT downloads use 60-120s).
 
     Raises the last exception if every attempt fails, so callers keep their
     existing try/except handling unchanged.

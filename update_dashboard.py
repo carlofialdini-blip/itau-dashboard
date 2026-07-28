@@ -25,6 +25,13 @@ if hasattr(sys.stderr, "reconfigure"):
 
 ROOT = Path(__file__).resolve().parent
 
+# Per-step ceiling. Generous on purpose: the target machine sits behind a
+# corporate proxy that inspects every request, and the heaviest steps (BGS
+# mining ~4min, ANP/FAOSTAT/Comex bulk downloads of 20-100MB) are already
+# slow on an unrestricted connection. A step that exceeds this is caught and
+# reported, never allowed to abort the run.
+STEP_TIMEOUT = 900
+
 STEPS = [
     ("Portfolio news",    [sys.executable, str(ROOT / "scrapers" / "scraper.py")]),
     ("China news",        [sys.executable, str(ROOT / "scrapers" / "china_scraper.py")]),
@@ -54,7 +61,26 @@ def run():
 
     for i, (label, cmd) in enumerate(STEPS, 1):
         print(f"  [{i}/{total}] {label}...")
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
+        # Every failure mode of a child step must land here as "this step
+        # failed, keep going" — that is this script's entire contract (see the
+        # module docstring). A bare subprocess.run() breaks that contract two
+        # ways: TimeoutExpired and OSError propagate out and kill the whole
+        # refresh, taking the remaining steps (including "Building dashboard")
+        # with them. The timeout is real and reachable on a slow corporate
+        # proxy — the BGS mining scraper already takes ~4 minutes on a normal
+        # connection, and the Comex step pulls 50-100MB CSVs.
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True,
+                                    encoding="utf-8", errors="replace", timeout=STEP_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            failed.append(label)
+            print(f"        FAILED — {label} timed out after {STEP_TIMEOUT}s "
+                  f"(continuing with the rest; this source keeps its last cached data)")
+            continue
+        except OSError as e:
+            failed.append(label)
+            print(f"        FAILED — {label} could not start: {e} (continuing with the rest)")
+            continue
         if result.returncode != 0:
             failed.append(label)
             print(f"        FAILED — {label} (continuing with the rest):")
