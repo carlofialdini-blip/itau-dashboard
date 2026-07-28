@@ -568,43 +568,61 @@ def build_credit() -> dict:
     }
 
 
+# Honest-empty defaults, one per section — mirrors core/generate_dashboard.py's
+# load_agriculture_data() empty shape exactly (that function returns this same
+# shape wholesale when this file has never run; these are the per-section
+# building blocks so a failure in ONE source doesn't have to mean losing all
+# of them). Keep both in sync if a section's shape ever changes.
+EMPTY_SECTIONS = {
+    "trade":      {"unit": "", "items": {}, "world": {}},
+    "prices":     {"minimum_price_unit": "", "market_price_unit": "", "minimum": {}, "market": {}},
+    "logistics":  {"unit": "", "by_year": {}},
+    "storage":    {"unit": "", "national_total_t": 0, "national_warehouse_count": 0, "by_state": {}},
+    "costs":      {"unit": "", "by_product": {}},
+    "crops":      {"unit": "", "items": {}, "world": {}, "countries": {}},
+    "livestock":  {"unit": "", "items": {}, "world": {}, "countries": {}},
+    "insurance":  {"unit": "", "note": "", "by_state": {}, "by_crop": {}},
+    "credit":     {"unit": "", "series_id": None, "title": "", "data": {}},
+}
+
+
+def _fetch_section(key: str, label: str, fetch_fn, existing: dict) -> dict:
+    """Run one section's fetch in isolation — a ConnectionReset/timeout from
+    one of this scraper's many independent external hosts (CONAB, IBGE,
+    MAPA, BCB) must not wipe out the other sections that already succeeded.
+    Falls back to the previous cache's value for this section if present
+    (same "keep last-cached data on failure" pattern update_dashboard.py
+    already applies at the whole-step level), else an honest empty shape.
+    """
+    print(f"  {label}...")
+    try:
+        result = fetch_fn()
+        return result
+    except Exception as e:
+        print(f"    FAILED ({type(e).__name__}: {e}) — keeping previous cached data")
+        return existing.get(key, EMPTY_SECTIONS[key])
+
+
 def main():
     print("Fetching Brazilian agriculture economics data...")
 
-    print("  CONAB — supply-demand balance (OfertaDemanda)...")
-    trade = build_trade()
-    print(f"    {len(trade['items'])} products")
+    existing: dict = {}
+    if OUTPUT_FILE.exists():
+        try:
+            with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+        except Exception:
+            existing = {}
 
-    print("  CONAB — prices (minimum + monthly market)...")
-    prices = build_prices()
-    print(f"    {len(prices['minimum'])} minimum-price products, {len(prices['market'])} market-price products")
-
-    print("  CONAB — freight (logistics)...")
-    logistics = build_logistics()
-
-    print("  CONAB — storage capacity...")
-    storage = build_storage()
-    print(f"    {storage['national_warehouse_count']} warehouses, {storage['national_total_t']:,.0f} t")
-
-    print("  CONAB — production costs...")
-    costs = build_costs()
-    print(f"    {len(costs['by_product'])} products")
-
-    print("  IBGE SIDRA — crops (PAM)...")
-    crops = build_crops()
-    print(f"    {len(crops['items'])} crops, {len(crops['countries'])} states")
-
-    print("  IBGE SIDRA — livestock (PPM)...")
-    livestock = build_livestock()
-    print(f"    {len(livestock['items'])} herd types, {len(livestock['countries'])} states")
-
-    print("  MAPA — rural insurance (SISSER)...")
-    insurance = build_insurance()
-    print(f"    {len(insurance['by_state'])} states, {len(insurance['by_crop'])} crops")
-
-    print("  BCB — rural credit (SGS 22027)...")
-    credit = build_credit()
-    print(f"    {len(credit['data'])} monthly points")
+    trade      = _fetch_section("trade",     "CONAB — supply-demand balance (OfertaDemanda)", build_trade, existing)
+    prices     = _fetch_section("prices",    "CONAB — prices (minimum + monthly market)", build_prices, existing)
+    logistics  = _fetch_section("logistics", "CONAB — freight (logistics)", build_logistics, existing)
+    storage    = _fetch_section("storage",   "CONAB — storage capacity", build_storage, existing)
+    costs      = _fetch_section("costs",     "CONAB — production costs", build_costs, existing)
+    crops      = _fetch_section("crops",     "IBGE SIDRA — crops (PAM)", build_crops, existing)
+    livestock  = _fetch_section("livestock", "IBGE SIDRA — livestock (PPM)", build_livestock, existing)
+    insurance  = _fetch_section("insurance", "MAPA — rural insurance (SISSER)", build_insurance, existing)
+    credit     = _fetch_section("credit",    "BCB — rural credit (SGS 22027)", build_credit, existing)
 
     db = {
         "crops": crops,
