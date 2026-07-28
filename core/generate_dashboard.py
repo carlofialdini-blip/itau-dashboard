@@ -19,7 +19,7 @@ if hasattr(sys.stderr, "reconfigure"):
 from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
 
-from net_utils import get_with_retry
+from net_utils import get_with_retry, get_yf_session
 
 
 def _safe_json(obj) -> Markup:
@@ -829,11 +829,19 @@ def _ck_make(label, unit, color, series, show_chart=True, source="Yahoo Finance"
 
 
 def _ck_yf(ticker, period="1y"):
-    """Download one Yahoo Finance ticker and return a list of {x, y} dicts."""
+    """Download one Yahoo Finance ticker and return a list of {x, y} dicts.
+
+    Passes get_yf_session() (verify=False) explicitly -- see that function's
+    docstring in core/net_utils.py for why this matters on the corporate
+    network: without it, every yfinance call here fails its TLS handshake
+    on Itaú's proxy and gets silently swallowed by the except below,
+    showing as "Data unavailable" on every yfinance-sourced card at once.
+    """
     try:
         import yfinance as yf
         df = yf.download(ticker, period=period, interval="1d",
-                         auto_adjust=True, progress=False)
+                         auto_adjust=True, progress=False,
+                         session=get_yf_session())
         if df.empty:
             return []
         col = df["Close"]
@@ -1035,12 +1043,16 @@ def fetch_cockpit_data():
     data["br10y"] = _ck_make("Brazil 10Y Treasury", "%", "#d97706", fetch_br10y(),
                               source="ANBIMA (ETTJ curve)")
 
-    # Iron ore: yfinance TIO=F, then FRED PIORECRUSD as fallback — source
+    # Iron ore: yfinance TIO=F, then FRED PIORECRUSDM as fallback — source
     # label reflects whichever path actually returned data, never a guess.
+    # PIORECRUSD (no "M") 404s as of 2026-07 — FRED retired/renamed it;
+    # PIORECRUSDM is the live successor (confirmed: same IMF series, just
+    # gained the frequency suffix, same pattern as PALUMUSDM/PNICKUSDM),
+    # live-verified current through June 2026 before trusting it here.
     print("    Iron Ore...")
     iron, iron_source = _ck_yf("TIO=F"), "Yahoo Finance"
     if not iron:
-        iron, iron_source = _ck_fred("PIORECRUSD", max_pts=52), "FRED"
+        iron, iron_source = _ck_fred("PIORECRUSDM", max_pts=60), "FRED"
     data["iron_ore"] = _ck_make("Iron Ore 62% Fe", "USD/t", "#92400e", iron, source=iron_source)
 
     # ── Additional commodities ───────────────────────────────────────────

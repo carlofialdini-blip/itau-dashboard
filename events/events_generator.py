@@ -29,7 +29,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from core.net_utils import get_with_retry, DEFAULT_HEADERS  # noqa: E402
+from core.net_utils import get_with_retry, DEFAULT_HEADERS, get_yf_session  # noqa: E402
 
 EXCEL_FILE      = ROOT / "data" / "portfolio.xlsx"
 OUTPUT_FILE     = ROOT / "data" / "events.json"
@@ -96,7 +96,7 @@ def fetch_earnings(ticker_map: dict[str, str]) -> list[dict]:
     for company, symbol in ticker_map.items():
 
         try:
-            cal = yf.Ticker(symbol).calendar
+            cal = yf.Ticker(symbol, session=get_yf_session()).calendar
             raw = cal.get("Earnings Date", []) if cal else []
 
             if not isinstance(raw, list):
