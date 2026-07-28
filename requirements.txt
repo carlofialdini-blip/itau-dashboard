@@ -6,4 +6,5 @@ urllib3
 jinja2
 markupsafe
 yfinance
+curl_cffi
 lxml
