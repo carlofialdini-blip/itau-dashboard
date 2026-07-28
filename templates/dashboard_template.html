@@ -583,6 +583,20 @@ div.hdr-mark { background: var(--accent); }
   font-size: 9px; font-weight: 400; color: var(--text-muted);
   text-transform: none; letter-spacing: 0; line-height: 1.2;
 }
+/* Freshness marker: says whether the number above it came from this run's
+   live fetch or was reused from the last-known-good cache. Both states are
+   labelled explicitly rather than only flagging the bad one — this file is
+   read statically (email/SharePoint) by people who have no way to check, so
+   "no badge means live" would be a convention nobody was told about. */
+.data-freshness { font-weight: 600; white-space: nowrap; }
+.data-freshness .fdot {
+  display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  margin-right: 3px; vertical-align: baseline;
+}
+.data-freshness.live         { color: var(--green); }
+.data-freshness.live .fdot   { background: var(--green); }
+.data-freshness.cached       { color: #d97706; }
+.data-freshness.cached .fdot { background: #d97706; }
 .mkt-chg {
   font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums;
 }
@@ -998,7 +1012,7 @@ div.hdr-mark { background: var(--accent); }
               {{ item.current_fmt }}
               {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
             </div>
-            <div class="mkt-card-source">{{ item.source }}</div>
+            <div class="mkt-card-source">{{ item.source }} · {% if item.stale %}<span class="data-freshness cached"><span class="fdot"></span>Cached{% if item.as_of %} {{ item.as_of }}{% endif %}</span>{% else %}<span class="data-freshness live"><span class="fdot"></span>Live</span>{% endif %}</div>
           </div>
           <div class="mkt-card-chart" id="mkt-{{ key }}"></div>
         </div>
@@ -1010,7 +1024,7 @@ div.hdr-mark { background: var(--accent); }
               {{ item.current_fmt }}
               {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
             </div>
-            <div class="mkt-card-source">{{ item.source }}</div>
+            <div class="mkt-card-source">{{ item.source }} · {% if item.stale %}<span class="data-freshness cached"><span class="fdot"></span>Cached{% if item.as_of %} {{ item.as_of }}{% endif %}</span>{% else %}<span class="data-freshness live"><span class="fdot"></span>Live</span>{% endif %}</div>
             <button class="mkt-csv-btn" onclick="downloadCockpitCSV('{{ key }}')" title="Download historical series as CSV">&#8595; CSV</button>
           </div>
         </div>
@@ -3011,7 +3025,7 @@ function _plotChart(plotEl, statEl, unitEl, ftrEl, traces, chartType, meta) {
     );
     statEl.classList.add('hidden');
     if (unitEl) unitEl.textContent = meta.unit   || '';
-    if (ftrEl)  ftrEl.textContent  = meta.source ? `Source: ${meta.source}` : '';
+    if (ftrEl)  _renderFooterWithFreshness(ftrEl, meta);
   } catch (e) {
     statEl.textContent = 'Chart render error';
     statEl.classList.add('chart-error');
@@ -3353,7 +3367,7 @@ function buildPulpCompanies() {
           ${d.current_fmt}
           ${d.change_fmt ? `<span class="mkt-chg ${d.change_dir}">${d.change_fmt}</span>` : ''}
         </div>
-        <div class="mkt-card-source">${d.ticker} · ${d.country}</div>
+        <div class="mkt-card-source">${d.ticker} · ${d.country} · ${_freshnessHTML(d)}</div>
       </div>
       <div class="mkt-card-chart" id="pulp-co-${d.ticker}"></div>
     </div>`).join('');
@@ -3691,7 +3705,7 @@ function buildMiningCompanies() {
           ${d.current_fmt}
           ${d.change_fmt ? `<span class="mkt-chg ${d.change_dir}">${d.change_fmt}</span>` : ''}
         </div>
-        <div class="mkt-card-source">${d.ticker} · ${d.country}</div>
+        <div class="mkt-card-source">${d.ticker} · ${d.country} · ${_freshnessHTML(d)}</div>
       </div>
       <div class="mkt-card-chart" id="mining-co-${d.ticker}"></div>
     </div>`).join('');
@@ -4067,7 +4081,7 @@ function buildAgricultureCompanies() {
           ${d.current_fmt}
           ${d.change_fmt ? `<span class="mkt-chg ${d.change_dir}">${d.change_fmt}</span>` : ''}
         </div>
-        <div class="mkt-card-source">${d.ticker} · ${d.country}</div>
+        <div class="mkt-card-source">${d.ticker} · ${d.country} · ${_freshnessHTML(d)}</div>
       </div>
       <div class="mkt-card-chart" id="agri-co-${d.ticker}"></div>
     </div>`).join('');
@@ -4475,6 +4489,34 @@ function _mktCsvDownload(d, filename) {
   a.download = filename;
   document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+
+// Freshness marker shared by the JS-rendered company panels and the Economic
+// Data chart footers. `stale`/`as_of` are set in core/generate_dashboard.py's
+// _flag_stale() at fetch time, so this reflects what actually happened on this
+// run rather than any client-side guess.
+// DOM-built twin of _freshnessHTML(), for the one call site that writes into
+// an existing element rather than an HTML string. Uses textContent for every
+// data-derived value so nothing is ever parsed as HTML here.
+function _renderFooterWithFreshness(ftrEl, meta) {
+  ftrEl.textContent = (meta && meta.source) ? `Source: ${meta.source} \u00b7 ` : '';
+  const badge = document.createElement('span');
+  const stale = !!(meta && meta.stale);
+  badge.className = 'data-freshness ' + (stale ? 'cached' : 'live');
+  const dot = document.createElement('span');
+  dot.className = 'fdot';
+  badge.appendChild(dot);
+  badge.appendChild(document.createTextNode(
+    stale ? 'Cached' + (meta.as_of ? ' ' + meta.as_of : '') : 'Live'));
+  ftrEl.appendChild(badge);
+}
+
+function _freshnessHTML(item) {
+  if (item && item.stale) {
+    const when = item.as_of ? ' ' + String(item.as_of).replace(/[^0-9A-Za-z:. -]/g, '') : '';
+    return '<span class="data-freshness cached"><span class="fdot"></span>Cached' + when + '</span>';
+  }
+  return '<span class="data-freshness live"><span class="fdot"></span>Live</span>';
 }
 
 function _mktSparkLayout(d) {

@@ -166,6 +166,52 @@ def _item_key(item, idx):
     return str(idx)
 
 
+def _last_obs_date(item):
+    """The date of an item's newest observation, or None.
+
+    Point shapes differ by source and both are in play here: the Cockpit and
+    the company panels use {"x": date, "y": value} (Plotly-shaped, built by
+    _ck_make()), while the BCB/chinadata chart series use
+    {"date": ..., "value": ...}. Read whichever key is present rather than
+    normalising, which would mean touching every fetch site.
+    """
+    if not isinstance(item, dict):
+        return None
+    pts = item.get("data") or []
+    if not pts or not isinstance(pts[-1], dict):
+        return None
+    return pts[-1].get("x") or pts[-1].get("date")
+
+
+def _flag_stale(container, reused_keys):
+    """Return a copy of `container` with reused items marked for the UI.
+
+    Marks a *copy* on purpose: the same merged structure is also written back
+    to live_fetch_cache.json, and a `_stale` flag baked into the cache would
+    be wrong on the next run (a value reused today may well refresh
+    tomorrow). Shallow-copying only the reused items keeps the cache clean
+    while still letting the template show an honest "as of" on the card.
+    """
+    reused = set(reused_keys)
+    if not reused:
+        return container
+    if isinstance(container, dict):
+        out = dict(container)
+        for k in reused:
+            if isinstance(out.get(k), dict):
+                out[k] = {**out[k], "stale": True, "as_of": _last_obs_date(out[k])}
+        return out
+    if isinstance(container, list):
+        out = []
+        for i, it in enumerate(container):
+            if isinstance(it, dict) and (_item_key(it, i) in reused or "<entire list>" in reused):
+                out.append({**it, "stale": True, "as_of": _last_obs_date(it)})
+            else:
+                out.append(it)
+        return out
+    return container
+
+
 def _resilient(name: str, fresh, cache: dict):
     """Merge a live fetch with the last-known-good copy, per item.
 
@@ -207,7 +253,7 @@ def _resilient(name: str, fresh, cache: dict):
             print(f"    ! {name}: reused cached data for {len(reused)} item(s): "
                   f"{', '.join(reused[:6])}{'...' if len(reused) > 6 else ''}")
         cache[name] = merged
-        return merged
+        return _flag_stale(merged, reused)
 
     if isinstance(fresh, list):
         prev_by_key = {}
@@ -228,7 +274,7 @@ def _resilient(name: str, fresh, cache: dict):
             print(f"    ! {name}: reused cached data for {len(reused)} item(s): "
                   f"{', '.join(reused[:6])}{'...' if len(reused) > 6 else ''}")
         cache[name] = merged
-        return merged
+        return _flag_stale(merged, reused)
 
     if not fresh and prev:
         print(f"    ! {name}: reused cached value")
