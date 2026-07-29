@@ -69,13 +69,23 @@ BCB_TARGETS = [
      "https://www.bcb.gov.br/", "any"),
 ]
 
+# The Pulp & Paper page has THREE upstream sources, not one. FAOSTAT supplies
+# the world production/trade/concentration series, IBGE PIM-PF supplies the
+# current-month Brazil index, and MDIC Comex supplies the Brazil wood-pulp
+# export chart. Comex is included here because it is also the step that timed
+# out on the bank machine (ReadTimeout at 120s), and it feeds Mining and
+# Agriculture too — so whatever it shows is useful well beyond this page.
 FAO_TARGETS = [
-    ("FAOSTAT bulk zip — the exact file the Pulp & Paper scraper downloads",
+    ("PULP: FAOSTAT bulk zip — the exact file the scraper downloads",
      "https://bulks-faostat.fao.org/production/Forestry_E_All_Data_(Normalized).zip", "zip"),
-    ("FAOSTAT bulk host — a plain path on the same host (host vs file test)",
+    ("PULP: FAOSTAT bulk host — plain path, same host (host vs media-type test)",
      "https://bulks-faostat.fao.org/production/", "any"),
-    ("FAO main website — is the whole fao.org family blocked?",
+    ("PULP: FAO main website — is the whole fao.org family blocked?",
      "https://www.fao.org/faostat/en/", "any"),
+    ("PULP: IBGE PIM-PF — the Brazil pulp/paper monthly index (SIDRA t/8888)",
+     "https://apisidra.ibge.gov.br/values/t/8888/n1/all/v/12606/p/last%206/c544/129324", "json"),
+    ("PULP+MINING+AGRI: MDIC Comex CSV — timed out at 120s on the bank machine",
+     f"https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm/EXP_{date.today().year}.csv", "any"),
 ]
 
 # Controls: these are known to work on the bank machine, so if one of THESE
@@ -243,7 +253,7 @@ def main():
     for t in BCB_TARGETS:
         results[t[0]] = check_http(*t)
 
-    rule("4. FAOSTAT (Pulp & Paper source)")
+    rule("4. PULP & PAPER PAGE — all three of its sources (+ Comex, shared)")
     for t in FAO_TARGETS:
         results[t[0]] = check_http(*t)
 
