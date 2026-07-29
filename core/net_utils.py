@@ -7,6 +7,10 @@ prone to transient connection timeouts. A single failed request should not
 zero out an entire sector/dataset — retry a few times with backoff first.
 """
 
+import os
+import re
+import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -72,6 +76,132 @@ def get_yf_session():
     return _YF_SESSION
 
 
+_PROXY_LOCK = threading.Lock()
+_PROXY_CANDIDATES = None   # None = not discovered yet; [] = discovered, none found
+_PROXY_WORKING = None      # the first candidate that actually worked
+
+
+def _discover_system_proxies():
+    """Find the proxy the machine's *browser* uses, which Python does not.
+
+    On the Itaú machine every bcb.gov.br host failed from Python with a
+    ConnectionError -- TCP connected and the TLS handshake was then reset,
+    the signature of SNI filtering -- while the same URL loaded fine in the
+    browser. The reason is that the browser is proxied by a PAC file and
+    Python is not: urllib's getproxies() reads only the *static* registry
+    proxy and never fetches or evaluates a PAC, so a fully-proxied machine
+    looks unproxied to Python and connects direct into the firewall.
+
+    Confirmed by diagnose_sources.py on the real machine: BCB returned valid
+    JSON through the discovered proxy in the same run where every direct
+    attempt failed.
+
+    Deliberately discovered at runtime rather than hardcoded. The working
+    proxy is internal Itaú infrastructure and does not belong in a GitHub
+    repo, and a hardcoded value would be wrong on every other machine.
+    Returns [] on a normal (unproxied) machine, which makes all of this a
+    no-op there.
+    """
+    found = []
+
+    env_override = os.environ.get("DASHBOARD_PROXY", "").strip()
+    if env_override:
+        found.append(env_override)
+
+    try:
+        from urllib.request import getproxies
+        for scheme, val in (getproxies() or {}).items():
+            if scheme in ("http", "https") and val:
+                found.append(val)
+    except Exception:
+        pass
+
+    if sys.platform == "win32":
+        try:
+            import winreg
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Internet Settings")
+            try:
+                server, _ = winreg.QueryValueEx(key, "ProxyServer")
+                if server:
+                    found.append(str(server))
+            except FileNotFoundError:
+                pass
+            try:
+                pac_url, _ = winreg.QueryValueEx(key, "AutoConfigURL")
+                if pac_url:
+                    # A PAC is JavaScript; evaluating it properly needs an
+                    # interpreter, but the reachable proxies appear as literal
+                    # "PROXY host:port" strings, which is enough to try.
+                    r = requests.get(str(pac_url), timeout=10, verify=False)
+                    found.extend(re.findall(r"PROXY\s+([A-Za-z0-9_.\-]+:\d+)", r.text))
+            except FileNotFoundError:
+                pass
+            winreg.CloseKey(key)
+        except Exception:
+            pass
+
+    out, seen = [], set()
+    for val in found:
+        v = str(val).strip()
+        if not v:
+            continue
+        parts = ([p.partition("=")[2] for p in v.split(";") if "=" in p]
+                 if ("=" in v and "://" not in v) else [v])
+        for cand in parts:
+            cand = cand.strip()
+            if not cand:
+                continue
+            cand = cand if "://" in cand else "http://" + cand
+            if cand not in seen:
+                seen.add(cand)
+                out.append(cand)
+    return out
+
+
+def _proxy_candidates():
+    global _PROXY_CANDIDATES
+    if _PROXY_CANDIDATES is None:
+        with _PROXY_LOCK:
+            if _PROXY_CANDIDATES is None:      # re-check inside the lock
+                _PROXY_CANDIDATES = _discover_system_proxies()
+                if _PROXY_CANDIDATES:
+                    print(f"    (system proxy detected, will use as fallback: "
+                          f"{', '.join(_PROXY_CANDIDATES)})")
+    return _PROXY_CANDIDATES
+
+
+def _try_via_proxy(url, headers, timeout, **kwargs):
+    """Last resort after every direct attempt failed. Returns a response or None.
+
+    Only ever runs on a request that has ALREADY failed outright, so it cannot
+    slow down or alter anything that currently works -- the alternative
+    outcome at this point is an exception and an empty chart.
+    """
+    global _PROXY_WORKING
+    candidates = _proxy_candidates()
+    if not candidates:
+        return None
+    # Whichever proxy worked last time goes first, so the 16 BCB series after
+    # the first one don't re-probe every candidate.
+    ordered = ([_PROXY_WORKING] + [c for c in candidates if c != _PROXY_WORKING]
+               if _PROXY_WORKING else list(candidates))
+    for proxy in ordered:
+        try:
+            r = requests.get(url, headers=headers or DEFAULT_HEADERS,
+                             timeout=min(timeout, 45), verify=False,
+                             proxies={"http": proxy, "https": proxy}, **kwargs)
+            r.raise_for_status()
+            if _PROXY_WORKING != proxy:
+                _PROXY_WORKING = proxy
+                print(f"    (reached {url.split('/')[2]} via proxy {proxy})")
+            return r
+        except Exception:
+            continue
+    return None
+
+
 def get_with_retry(url, *, headers=None, timeout=30, retries=3, backoff=2.0, **kwargs):
     """GET with retries on connection/timeout errors and transient 5xx
     server errors. A 502/503/504 means the *target* server had a bad
@@ -108,6 +238,17 @@ def get_with_retry(url, *, headers=None, timeout=30, retries=3, backoff=2.0, **k
             last_exc = e
         if attempt < retries:
             time.sleep(backoff * attempt)
+
+    # Every direct attempt failed. Before giving up, try the machine's own
+    # proxy -- on the deployment target the direct path is SNI-filtered for
+    # bcb.gov.br while the browser's proxy reaches it fine, and that one
+    # difference silently emptied 17 series across Overview, Credit and
+    # Agriculture. This runs only after a failure that would otherwise raise,
+    # so nothing that currently succeeds is affected, and it is a no-op on a
+    # machine with no proxy configured.
+    fallback = _try_via_proxy(url, headers, timeout, **kwargs)
+    if fallback is not None:
+        return fallback
     raise last_exc
 
 
