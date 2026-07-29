@@ -1338,11 +1338,18 @@ def _slugify_cockpit_key(name: str) -> str:
     return "pf_" + re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
 
 
-def fetch_portfolio_companies() -> dict:
+def fetch_portfolio_companies() -> tuple:
     """One Cockpit card per publicly-traded portfolio company, keyed for
     merging directly into COCKPIT_DATA / cockpit_groups — reuses the exact
     same _ck_yf()/_ck_make() pair and .mkt-card rendering every other
     Cockpit metric already uses, not a new component.
+
+    Returns (items, roster): `roster` is the set of keys that have a real
+    ticker in portfolio.xlsx right now, which is what lets
+    _prune_portfolio_cards() tell "this company was removed from the
+    spreadsheet" apart from "this company's fetch failed today". It is None
+    when the spreadsheet isn't there to read at all — an unknown roster must
+    not be mistaken for an empty one.
 
     data/portfolio.xlsx's Ticker column is the single source of truth
     (also used by events/events_generator.py for earnings dates — this
@@ -1362,8 +1369,9 @@ def fetch_portfolio_companies() -> dict:
     print("  Fetching portfolio company stock performance...")
     result = {}
     if not os.path.exists(PORTFOLIO_XLSX):
-        return result
+        return result, None
     df = pd.read_excel(PORTFOLIO_XLSX)
+    roster = set()
     for _, row in df.iterrows():
         name = str(row.get("Company") or "").strip()
         ticker_raw = str(row.get("Ticker") or "").strip()
@@ -1383,10 +1391,60 @@ def fetch_portfolio_companies() -> dict:
         series = _ck_yf(ticker, period="6mo")
         item = _ck_make(name, "", "#2563eb", series, show_chart=True, source="Yahoo Finance")
         item["ticker"] = ticker
-        result[_slugify_cockpit_key(name)] = item
+        key = _slugify_cockpit_key(name)
+        roster.add(key)
+        result[key] = item
         print(f"    {name} ({ticker}): {item['current_fmt'] or 'N/A'}")
         _time.sleep(0.3)
-    return result
+    return result, roster
+
+
+def _prune_portfolio_cards(cockpit: dict, roster, cache: dict) -> dict:
+    """Hide portfolio company cards that have no chart to draw.
+
+    Two distinct ways a pf_ card ends up rendering the template's
+    "Data unavailable" placeholder, both reported from the bank machine:
+
+      * The ticker returns nothing and there is no cached series to fall back
+        on — a symbol that was delisted or renamed upstream (Embraer's
+        EMBR3 -> EMBJ3 is the precedent) reads as a permanently empty card.
+      * The company (or just its Ticker cell) was removed from
+        portfolio.xlsx, but its last-good series is still in
+        live_fetch_cache.json. _resilient() merges onto the previous run's
+        dict, so a key that stops being fetched otherwise survives forever —
+        the spreadsheet is the source of truth, so that key is dropped from
+        the cache too, not just from this render.
+
+    A card whose fetch failed today but has real cached data is deliberately
+    kept: it plots real values and already carries its own "Cached <date>"
+    badge, so it is a working chart, not an empty one.
+
+    roster is None when portfolio.xlsx couldn't be read — the ticker list is
+    then unknown, so only the no-data test applies rather than wiping every
+    portfolio card over a missing file.
+    """
+    removed, empty = [], []
+    for key, item in cockpit.items():
+        if not key.startswith("pf_"):
+            continue
+        if roster is not None and key not in roster:
+            removed.append(key)
+        elif not _has_data(item):
+            empty.append(key)
+    if not removed and not empty:
+        return cockpit
+    cached = cache.get("cockpit")
+    if isinstance(cached, dict):
+        for key in removed:
+            cached.pop(key, None)
+    hidden = set(removed) | set(empty)
+    if removed:
+        print(f"    ! portfolio: dropped {len(removed)} card(s) no longer in "
+              f"portfolio.xlsx: {', '.join(removed)}")
+    if empty:
+        print(f"    ! portfolio: hid {len(empty)} card(s) with no data: "
+              f"{', '.join(empty)}")
+    return {k: v for k, v in cockpit.items() if k not in hidden}
 
 
 # ── Pulp & Paper: public-company performance ────────────────────────────────
@@ -1744,8 +1802,12 @@ def main():
 
     print("Fetching cockpit market data...")
     cockpit = fetch_cockpit_data()
-    cockpit.update(fetch_portfolio_companies())
+    portfolio_items, portfolio_roster = fetch_portfolio_companies()
+    cockpit.update(portfolio_items)
     cockpit = _resilient("cockpit", cockpit, live_cache)
+    # After the cache merge, not before: a ticker that failed today but has
+    # real cached data still draws a chart and must survive this filter.
+    cockpit = _prune_portfolio_cards(cockpit, portfolio_roster, live_cache)
 
     print("Loading fuel-distribution data (ANP)...")
     fuel_data = load_fuel_data()
