@@ -967,11 +967,11 @@ div.hdr-mark { background: var(--accent); }
   </div>
 
   <div class="page-switcher">
-    <button class="page-btn cockpit active" id="btnCockpit"  onclick="showPage('cockpit')">📊 Cockpit</button>
+    <button class="page-btn cockpit active" id="btnCockpit"  onclick="showPage('cockpit')">🏠 Home</button>
     <button class="page-btn news"           id="btnNews"     onclick="showPage('news')">📰 News</button>
-    <button class="page-btn econ"           id="btnEcon"     onclick="showPage('econ')">📈 Economic Data</button>
+    <button class="page-btn econ"           id="btnEcon"     onclick="showPage('econ')">📈 Sectors</button>
     <button class="page-btn calendar"       id="btnCalendar" onclick="showPage('calendar')">🗓️ Calendar</button>
-    <button class="page-btn datasets"       id="btnDatasets" onclick="showPage('datasets')">🇨🇳 Other Datasets</button>
+    <button class="page-btn datasets"       id="btnDatasets" onclick="showPage('datasets')">🇨🇳 Chinese Datasets</button>
   </div>
 
   <div class="hdr-right">
@@ -1012,7 +1012,7 @@ div.hdr-mark { background: var(--accent); }
               {{ item.current_fmt }}
               {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
             </div>
-            <div class="mkt-card-source">{{ item.source }} · {% if item.stale %}<span class="data-freshness cached"><span class="fdot"></span>Cached{% if item.as_of %} {{ item.as_of }}{% endif %}</span>{% else %}<span class="data-freshness live"><span class="fdot"></span>Live</span>{% endif %}</div>
+            <div class="mkt-card-source">{{ item.source }} · {% if item.stale %}<span class="data-freshness cached"><span class="fdot"></span>Cached{% if item.as_of %} {{ item.as_of }}{% endif %}</span>{% else %}<span class="data-freshness live"><span class="fdot"></span>Updated</span>{% endif %}</div>
           </div>
           <div class="mkt-card-chart" id="mkt-{{ key }}"></div>
         </div>
@@ -1024,7 +1024,7 @@ div.hdr-mark { background: var(--accent); }
               {{ item.current_fmt }}
               {% if item.change_fmt %}<span class="mkt-chg {{ item.change_dir }}">{{ item.change_fmt }}</span>{% endif %}
             </div>
-            <div class="mkt-card-source">{{ item.source }} · {% if item.stale %}<span class="data-freshness cached"><span class="fdot"></span>Cached{% if item.as_of %} {{ item.as_of }}{% endif %}</span>{% else %}<span class="data-freshness live"><span class="fdot"></span>Live</span>{% endif %}</div>
+            <div class="mkt-card-source">{{ item.source }} · {% if item.stale %}<span class="data-freshness cached"><span class="fdot"></span>Cached{% if item.as_of %} {{ item.as_of }}{% endif %}</span>{% else %}<span class="data-freshness live"><span class="fdot"></span>Updated</span>{% endif %}</div>
             <button class="mkt-csv-btn" onclick="downloadCockpitCSV('{{ key }}')" title="Download historical series as CSV">&#8595; CSV</button>
           </div>
         </div>
@@ -1121,7 +1121,7 @@ div.hdr-mark { background: var(--accent); }
 ══════════════════════════════════════════════ -->
 <div id="econPage" class="page">
   <div class="econ-subnav">
-    <button class="econ-subnav-btn active" id="econSubBtnOverview" onclick="econSubnavShow('overview')">Overview</button>
+    <button class="econ-subnav-btn active" id="econSubBtnOverview" onclick="econSubnavShow('overview')">Economic Data</button>
     <button class="econ-subnav-btn" id="econSubBtnEnergy" onclick="econSubnavShow('energy')">⛽ Energy — Fuel Distribution</button>
     <button class="econ-subnav-btn" id="econSubBtnPulp" onclick="econSubnavShow('pulp')">🪵 Pulp &amp; Paper</button>
     <button class="econ-subnav-btn" id="econSubBtnMining" onclick="econSubnavShow('mining')">⛏️ Mining</button>
@@ -4507,7 +4507,7 @@ function _renderFooterWithFreshness(ftrEl, meta) {
   dot.className = 'fdot';
   badge.appendChild(dot);
   badge.appendChild(document.createTextNode(
-    stale ? 'Cached' + (meta.as_of ? ' ' + meta.as_of : '') : 'Live'));
+    stale ? 'Cached' + (meta.as_of ? ' ' + meta.as_of : '') : 'Updated'));
   ftrEl.appendChild(badge);
 }
 
@@ -4516,7 +4516,7 @@ function _freshnessHTML(item) {
     const when = item.as_of ? ' ' + String(item.as_of).replace(/[^0-9A-Za-z:. -]/g, '') : '';
     return '<span class="data-freshness cached"><span class="fdot"></span>Cached' + when + '</span>';
   }
-  return '<span class="data-freshness live"><span class="fdot"></span>Live</span>';
+  return '<span class="data-freshness live"><span class="fdot"></span>Updated</span>';
 }
 
 function _mktSparkLayout(d) {
