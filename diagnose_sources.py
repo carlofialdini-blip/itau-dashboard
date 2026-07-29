@@ -146,30 +146,163 @@ def check_dns_tcp_tls(host, port=443):
         out["tls"] = "skipped (no DNS)"
         return out
 
+    # TCP and TLS are wrapped separately on purpose. An earlier version wrapped
+    # both in one try/except and, when TCP succeeded but the TLS handshake
+    # failed, reported "TLS: skipped (no TCP)" — flatly contradicting the
+    # "TCP: OK" printed a line above, and swallowing the TLS error, which is
+    # the single most diagnostic thing here. TCP-OK-but-TLS-reset is the
+    # signature of SNI filtering: the firewall completes the TCP handshake,
+    # reads the hostname out of the TLS ClientHello, and resets on a match.
     t0 = time.monotonic()
     try:
-        with socket.create_connection((host, port), timeout=15) as sock:
-            out["tcp"] = f"OK  ({time.monotonic()-t0:.2f}s)"
-            t0 = time.monotonic()
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            with ctx.wrap_socket(sock, server_hostname=host) as tls:
-                cert_issuer = "unknown"
-                try:
-                    der = tls.getpeercert(binary_form=True)
-                    cert_issuer = f"{len(der)} bytes"
-                except Exception:
-                    pass
-                out["tls"] = (f"OK  {tls.version()}  cert={cert_issuer}  "
-                              f"({time.monotonic()-t0:.2f}s)")
+        sock = socket.create_connection((host, port), timeout=15)
     except Exception as e:
-        out.setdefault("tcp", f"FAIL  {type(e).__name__}: {e}")
-        out.setdefault("tls", "skipped (no TCP)")
+        out["tcp"] = f"FAIL  {type(e).__name__}: {e}"
+        out["tls"] = "skipped (TCP never connected)"
+        return out
+    out["tcp"] = f"OK  ({time.monotonic()-t0:.2f}s)"
+
+    t0 = time.monotonic()
+    try:
+        ctx = ssl.create_default_context()
+        # Certs are deliberately ignored, so a TLS failure here can NOT be a
+        # certificate problem — it is the handshake itself being refused.
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        with ctx.wrap_socket(sock, server_hostname=host) as tls:
+            der = b""
+            try:
+                der = tls.getpeercert(binary_form=True) or b""
+            except Exception:
+                pass
+            out["tls"] = (f"OK  {tls.version()}  cert={len(der)} bytes  "
+                          f"({time.monotonic()-t0:.2f}s)")
+    except Exception as e:
+        out["tls"] = (f"FAIL after {time.monotonic()-t0:.2f}s  "
+                      f"{type(e).__name__}: {e}   "
+                      f"<-- TCP was fine; handshake refused (certs are NOT checked here)")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
     return out
 
 
-def check_http(label, url, expect, ua=None):
+def discover_proxies():
+    """Find the proxy the BROWSER uses, which Python is not currently using.
+
+    This matters because the browser reaches bcb.gov.br and Python does not,
+    while `proxy env vars: (none set)` says Python is connecting directly.
+    On corporate Windows the browser almost always goes through a proxy
+    configured by a PAC file (registry value AutoConfigURL), and Python's
+    urllib.getproxies() reads only the *static* registry proxy — it does not
+    fetch or evaluate a PAC. So a machine can be fully proxied for browsing
+    while Python sees "no proxy" and connects direct into a firewall that
+    resets the connection.
+
+    Returns [(source, proxy_url)] candidates to retry the failing hosts with.
+    """
+    found = []
+    rule("3. PROXY DISCOVERY  (what the browser uses that Python isn't)")
+
+    try:
+        from urllib.request import getproxies
+        gp = getproxies()
+        print(f"  urllib.getproxies()        : {gp or '(none)'}")
+        for scheme, val in (gp or {}).items():
+            if scheme in ("http", "https") and val:
+                found.append((f"urllib getproxies[{scheme}]", val))
+    except Exception as e:
+        print(f"  urllib.getproxies()        : error {e}")
+
+    if sys.platform == "win32":
+        try:
+            import winreg
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Internet Settings")
+            for name in ("ProxyEnable", "ProxyServer", "AutoConfigURL"):
+                try:
+                    val, _ = winreg.QueryValueEx(key, name)
+                    print(f"  registry {name:18}: {val}")
+                    if name == "ProxyServer" and val:
+                        found.append(("registry ProxyServer", val))
+                    if name == "AutoConfigURL" and val:
+                        found.extend(_proxies_from_pac(str(val)))
+                except FileNotFoundError:
+                    print(f"  registry {name:18}: (not set)")
+            winreg.CloseKey(key)
+        except Exception as e:
+            print(f"  registry read              : error {e}")
+
+        try:
+            import subprocess
+            out = subprocess.run(["netsh", "winhttp", "show", "proxy"],
+                                 capture_output=True, text=True,
+                                 encoding="utf-8", errors="replace", timeout=20)
+            for line in (out.stdout or "").splitlines():
+                if line.strip():
+                    print(f"  netsh winhttp              | {line.strip()}")
+        except Exception as e:
+            print(f"  netsh winhttp              : error {e}")
+    else:
+        print("  (registry/netsh checks are Windows-only; skipped on this platform)")
+
+    # de-dupe, normalise to a URL requests will accept
+    norm, seen = [], set()
+    for src, val in found:
+        v = val.strip()
+        if not v:
+            continue
+        if "=" in v and "://" not in v:          # "http=host:port;https=host:port"
+            for part in v.split(";"):
+                if "=" in part:
+                    sch, _, hp = part.partition("=")
+                    if sch.strip() in ("http", "https") and hp.strip():
+                        cand = hp.strip()
+                        cand = cand if "://" in cand else "http://" + cand
+                        if cand not in seen:
+                            seen.add(cand); norm.append((src, cand))
+            continue
+        cand = v if "://" in v else "http://" + v
+        if cand not in seen:
+            seen.add(cand); norm.append((src, cand))
+
+    print(f"\n  -> {len(norm)} candidate proxy(ies) to retry through: "
+          f"{[c for _s, c in norm] or 'NONE FOUND'}")
+    if not norm:
+        print("     If the browser genuinely uses a proxy, get it from:")
+        print("       Windows Settings > Network & Internet > Proxy")
+        print("     or in the browser: chrome://net-internals/#proxy")
+    return norm
+
+
+def _proxies_from_pac(pac_url):
+    """Fetch the PAC file and pull literal 'PROXY host:port' entries out of it.
+
+    A PAC is JavaScript and evaluating it properly needs an interpreter, but
+    in practice the reachable proxies appear as literal strings, which is
+    enough to test connectivity here.
+    """
+    out = []
+    print(f"  PAC file                   : fetching {pac_url}")
+    try:
+        r = requests.get(pac_url, timeout=20, verify=False)
+        body = r.text
+        print(f"  PAC fetch                  : HTTP {r.status_code}, {len(body)} chars")
+        import re
+        hosts = re.findall(r"PROXY\s+([A-Za-z0-9_.\-]+:\d+)", body)
+        uniq = list(dict.fromkeys(hosts))
+        print(f"  PAC proxies found          : {uniq[:8] or '(none parsed)'}")
+        for h in uniq[:5]:
+            out.append(("PAC file", h))
+    except Exception as e:
+        print(f"  PAC fetch                  : FAILED {type(e).__name__}: {e}")
+    return out
+
+
+def check_http(label, url, expect, ua=None, proxies=None):
     print(f"\n--- {label}")
     print(f"    {url[:110]}")
     if ua:
@@ -178,7 +311,7 @@ def check_http(label, url, expect, ua=None):
     try:
         # stream=True so a huge file isn't pulled down just to test reachability
         r = requests.get(url, headers={"User-Agent": ua or UA}, timeout=45,
-                         verify=False, stream=True)
+                         verify=False, stream=True, proxies=proxies)
     except Exception as e:
         print(f"    RESULT   : REQUEST FAILED after {time.monotonic()-t0:.1f}s")
         print(f"    ERROR    : {type(e).__name__}: {str(e)[:300]}")
@@ -248,29 +381,65 @@ def main():
         for layer, result in check_dns_tcp_tls(host).items():
             print(f"    {layer.upper():4}: {result}")
 
+    proxy_candidates = discover_proxies()
+    for arg in sys.argv[1:]:
+        cand = arg if "://" in arg else "http://" + arg
+        print(f"  + proxy supplied on the command line: {cand}")
+        proxy_candidates.append(("command line", cand))
+
     results = {}
-    rule("3. BANCO CENTRAL (BCB)")
+    rule("4. BANCO CENTRAL (BCB)  — direct, no proxy")
     for t in BCB_TARGETS:
         results[t[0]] = check_http(*t)
 
-    rule("4. PULP & PAPER PAGE — all three of its sources (+ Comex, shared)")
+    rule("5. PULP & PAPER PAGE — all three of its sources (+ Comex, shared)")
     for t in FAO_TARGETS:
         results[t[0]] = check_http(*t)
 
-    rule("5. CONTROLS (these work today — if they fail, it's the network generally)")
+    rule("6. CONTROLS (these work today — if they fail, it's the network generally)")
     for t in CONTROL_TARGETS:
         results[t[0]] = check_http(*t)
 
-    rule("6. SUMMARY  (copy this whole output back)")
+    # THE DECIDING TEST. The browser reaches bcb.gov.br and Python does not,
+    # so retry the three failing sources through the proxy the browser uses.
+    # If they answer here, this is a configuration fix in the pipeline and no
+    # IT ticket is needed; if they fail here too, it is a real network block.
+    rule("7. RETRY THROUGH THE BROWSER'S PROXY  <-- the deciding test")
+    if not proxy_candidates:
+        print("  No proxy candidate found, so nothing to retry through.")
+        print("  Please check Windows Settings > Network & Internet > Proxy and")
+        print("  tell me the address/port (or the 'Use setup script' URL) shown there.")
+    else:
+        retry = [
+            ("BCB OLINDA (Selic, last 1)",
+             "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json", "json"),
+            ("FAOSTAT bulk zip",
+             "https://bulks-faostat.fao.org/production/Forestry_E_All_Data_(Normalized).zip", "zip"),
+            ("MDIC Comex CSV",
+             f"https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm/EXP_{date.today().year}.csv", "any"),
+        ]
+        for src, proxy in proxy_candidates:
+            print(f"\n  ### via {proxy}   (discovered from: {src})")
+            pmap = {"http": proxy, "https": proxy}
+            for label, url, expect in retry:
+                v, n = check_http(f"{label}  [via proxy]", url, expect, proxies=pmap)
+                results[f"VIA PROXY {proxy} — {label}"] = (v, n)
+
+    rule("8. SUMMARY  (copy this whole output back)")
     for label, (verdict, note) in results.items():
         mark = "OK  " if verdict == "OK" else "FAIL"
         print(f"  [{mark}] {label[:62]:64} {note}")
 
     print("\n  How to read this:")
-    print("   - DNS/TCP/TLS all OK but HTTP fails  -> the proxy is filtering, not the network")
-    print("   - 'HTML PAGE WHERE DATA EXPECTED'    -> proxy block/login page; needs an IT allowlist")
-    print("   - 'PROXY MEDIA-TYPE BLOCK'           -> the FAOSTAT case; IT must allow that media type")
-    print("   - a DIFFERENT BCB host returning OK  -> fixable in code, no IT ticket needed")
+    print("   - TCP OK but TLS FAIL                -> SNI filtering: the firewall reads the")
+    print("                                           hostname from the TLS handshake and resets")
+    print("                                           (it is NOT a certificate problem — certs")
+    print("                                            are not checked by this script at all)")
+    print("   - 'VIA PROXY ... ' rows OK           -> FIXABLE IN CODE. Point the pipeline at that")
+    print("                                           proxy; no IT ticket needed.")
+    print("   - 'VIA PROXY ... ' rows FAIL too     -> a real network block; needs IT.")
+    print("   - 'PROXY MEDIA-TYPE BLOCK'           -> the FAOSTAT case; IT must allow that media")
+    print("                                           type, unless it succeeds via the proxy above")
     print("   - controls failing too               -> a general network problem, not these sources")
     print()
 
