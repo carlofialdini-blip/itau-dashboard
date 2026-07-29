@@ -1698,8 +1698,16 @@ def render(unified_news, news_countries, news_sectors, news_companies, news_sour
     # portfolio with zero tickers renders exactly as before, no empty
     # group. Keys are whatever fetch_portfolio_companies() actually
     # produced, so this doesn't need to know company names/count.
+    #
+    # The label calls out B3 explicitly because only the Brazil-listed
+    # portfolio companies carry a Ticker in portfolio.xlsx — a reader
+    # otherwise has no way to tell a company is absent because it isn't
+    # listed rather than because its chart broke. The template matches this
+    # group by prefix (not by the full string) when picking the wrapping
+    # grid, so this wording can change without breaking the layout.
     portfolio_keys = [k for k in cockpit if k.startswith("pf_")]
-    cockpit_groups = COCKPIT_GROUPS + ([("Portfolio Companies", portfolio_keys)] if portfolio_keys else [])
+    cockpit_groups = COCKPIT_GROUPS + (
+        [("Portfolio Companies — B3 Listed (Brazil)", portfolio_keys)] if portfolio_keys else [])
     html = template.render(
         # Cockpit
         cockpit=cockpit,

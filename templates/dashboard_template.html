@@ -994,7 +994,11 @@ div.hdr-mark { background: var(--accent); }
     {% for group_name, keys in cockpit_groups %}
     <div class="mkt-group">
       <div class="mkt-group-lbl">{{ group_name }}</div>
-      <div class="mkt-grid{% if group_name in ('Commodities', 'Portfolio Companies') %} mkt-grid-wrap{% endif %}" style="grid-template-columns:{% if group_name in ('Commodities', 'Portfolio Companies') %}repeat(auto-fill, minmax(200px, 1fr)){% else %}repeat({{ keys|length }},1fr){% endif %}">
+      {# Matched by prefix, not full string: these two groups hold 10+ cards and
+         need the wrapping grid (repeat(N,1fr) squeezes them unreadably thin),
+         but their labels carry descriptive suffixes that are free to reword. #}
+      {% set wrap_grid = group_name == 'Commodities' or group_name.startswith('Portfolio Companies') %}
+      <div class="mkt-grid{% if wrap_grid %} mkt-grid-wrap{% endif %}" style="grid-template-columns:{% if wrap_grid %}repeat(auto-fill, minmax(200px, 1fr)){% else %}repeat({{ keys|length }},1fr){% endif %}">
         {% for key in keys %}
         {% set item = cockpit[key] %}
         {% if item.show_chart %}
